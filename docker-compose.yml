@@ -55,6 +55,12 @@ services:
       REDIS_URL: redis://redis:6379
       JWT_SECRET: your-super-secret-jwt-key-change-in-production
       CORS_ORIGIN: http://localhost:8100
+      # External data provider API keys (loaded from .env at project root)
+      ALPHA_VANTAGE_API_KEY: ${ALPHA_VANTAGE_API_KEY:-}
+      FINNHUB_API_KEY: ${FINNHUB_API_KEY:-}
+      IOL_USERNAME: ${IOL_USERNAME:-}
+      IOL_PASSWORD: ${IOL_PASSWORD:-}
+      IOL_BASE_URL: ${IOL_BASE_URL:-https://api.invertironline.com}
     ports:
       - '8101:8101'
     volumes:

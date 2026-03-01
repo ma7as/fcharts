@@ -12,19 +12,29 @@ datasource db {
 
 // Market data models
 model Symbol {
-  id          String   @id @default(cuid())
-  symbol      String   @unique // e.g., "BTCUSDT", "ETHUSDT"
-  name        String   // e.g., "Bitcoin", "Ethereum"
-  exchange    String   // e.g., "Binance", "Coinbase"
-  type        String   // e.g., "crypto", "stock", "forex"
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               String   @id @default(cuid())
+  symbol           String   @unique // e.g., "BTCUSDT", "AAPL", "GGAL", "AAPL.BA"
+  name             String   // e.g., "Bitcoin", "Apple Inc", "Grupo Financiero Galicia"
+  exchange         String   // e.g., "Binance", "NYSE", "NASDAQ", "BYMA"
+  type             String   // "crypto" | "stock" | "cedear" | "cedear_underlying" | "etf" | "bond" | "index"
+  sector           String?  // For stocks: "Technology", "Finance", etc.
+  currency         String   @default("USD") // "USD" | "ARS" | "USDT"
+  market           String   @default("GLOBAL") // "BYMA" | "NASDAQ" | "NYSE" | "Binance" | "GLOBAL"
+  dataSource       String   @default("binance") // "binance" | "yahoo" | "alphavantage" | "finnhub" | "iol"
+  underlyingSymbol String?  // Solo CEDEARs: ticker del subyacente en USD, ej: "AAPL"
+  cedearRatio      Float?   // Solo CEDEARs: ratio de conversión, ej: 10.0
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  candles     Candle[]
-  watchlists  WatchlistItem[]
+  candles       Candle[]
+  watchlists    WatchlistItem[]
+  positions     Position[]
+  transactions  Transaction[]
 
   @@index([symbol, exchange])
+  @@index([type])
+  @@index([market, type])
   @@map("symbols")
 }
 
@@ -62,6 +72,7 @@ model User {
   updatedAt   DateTime @updatedAt
 
   watchlists  Watchlist[]
+  portfolios  Portfolio[]
 
   @@map("users")
 }
@@ -94,4 +105,89 @@ model WatchlistItem {
   @@unique([watchlistId, symbolId])
   @@index([watchlistId])
   @@map("watchlist_items")
+}
+// Portfolio & Investment models
+model Portfolio {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  currency    String   @default("USD") // Base currency for portfolio
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  positions        Position[]
+  transactions     Transaction[]
+  performanceSnaps PerformanceSnapshot[]
+
+  @@index([userId])
+  @@map("portfolios")
+}
+
+model Position {
+  id              String    @id @default(cuid())
+  portfolioId     String
+  portfolio       Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  symbolId        String
+  symbol          Symbol    @relation(fields: [symbolId], references: [id], onDelete: Restrict)
+  
+  quantity        Decimal   @db.Decimal(20, 8) // Current quantity held
+  averagePrice    Decimal   @db.Decimal(20, 8) // Average purchase price
+  currentPrice    Decimal?  @db.Decimal(20, 8) // Last known market price
+  costBasis       Decimal   @db.Decimal(20, 2) // Total cost invested
+  marketValue     Decimal?  @db.Decimal(20, 2) // Current market value
+  unrealizedPnL   Decimal?  @db.Decimal(20, 2) // Unrealized profit/loss
+  unrealizedPnLPct Decimal?  @db.Decimal(10, 4) // Unrealized P&L percentage
+  
+  lastUpdated     DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+
+  @@unique([portfolioId, symbolId])
+  @@index([portfolioId])
+  @@map("positions")
+}
+
+model Transaction {
+  id              String    @id @default(cuid())
+  portfolioId     String
+  portfolio       Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  symbolId        String
+  symbol          Symbol    @relation(fields: [symbolId], references: [id], onDelete: Restrict)
+  
+  type            String    // "BUY", "SELL", "DIVIDEND", "SPLIT", "TRANSFER_IN", "TRANSFER_OUT"
+  quantity        Decimal   @db.Decimal(20, 8)
+  price           Decimal   @db.Decimal(20, 8)
+  fees            Decimal   @default(0) @db.Decimal(20, 2)
+  total           Decimal   @db.Decimal(20, 2) // Total amount (quantity * price + fees)
+  
+  notes           String?
+  executedAt      DateTime  @default(now()) // When the transaction occurred
+  createdAt       DateTime  @default(now())
+
+  @@index([portfolioId])
+  @@index([symbolId])
+  @@index([executedAt])
+  @@map("transactions")
+}
+
+model PerformanceSnapshot {
+  id              String    @id @default(cuid())
+  portfolioId     String
+  portfolio       Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  
+  timestamp       DateTime  @default(now())
+  totalValue      Decimal   @db.Decimal(20, 2) // Total portfolio value
+  totalCost       Decimal   @db.Decimal(20, 2) // Total cost basis
+  totalPnL        Decimal   @db.Decimal(20, 2) // Total profit/loss
+  totalPnLPct     Decimal   @db.Decimal(10, 4) // Total P&L percentage
+  
+  dayChange       Decimal?  @db.Decimal(20, 2) // Change since yesterday
+  dayChangePct    Decimal?  @db.Decimal(10, 4) // Day change percentage
+  
+  cashBalance     Decimal   @default(0) @db.Decimal(20, 2) // Available cash
+
+  @@index([portfolioId, timestamp])
+  @@map("performance_snapshots")
 }

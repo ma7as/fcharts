@@ -14,6 +14,7 @@ const intervals = [
   { value: '4h', label: '4 Hours' },
   { value: '1d', label: '1 Day' },
   { value: '1w', label: '1 Week' },
+  { value: '1mo', label: '1 Month' },
 ];
 
 export function IntervalSelector({ value, onChange }: Props) {
@@ -21,7 +22,7 @@ export function IntervalSelector({ value, onChange }: Props) {
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+      className="px-4 py-2 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
     >
       {intervals.map((interval) => (
         <option key={interval.value} value={interval.value}>

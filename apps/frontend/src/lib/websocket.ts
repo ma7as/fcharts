@@ -2,13 +2,38 @@ import { io, Socket } from 'socket.io-client';
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8101';
 
+const MAX_RECONNECT_ATTEMPTS = 10;
+const RECONNECT_DELAY_MS = 3000;
+
 export class MarketWebSocket {
   private socket: Socket;
+  private currentSymbol: string | null = null;
+  private currentInterval: string | null = null;
+  private currentCallback: ((data: any) => void) | null = null;
+  private reconnectAttempts = 0;
 
   constructor() {
     this.socket = io(`${WS_URL}/market`, {
       transports: ['websocket'],
       autoConnect: false,
+      reconnection: true,
+      reconnectionAttempts: MAX_RECONNECT_ATTEMPTS,
+      reconnectionDelay: RECONNECT_DELAY_MS,
+    });
+
+    // Re-subscribe after reconnect
+    this.socket.on('connect', () => {
+      this.reconnectAttempts = 0;
+      if (this.currentSymbol && this.currentInterval && this.currentCallback) {
+        this.socket.emit('subscribe', {
+          symbol: this.currentSymbol,
+          interval: this.currentInterval,
+        });
+      }
+    });
+
+    this.socket.on('reconnect_attempt', (attempt: number) => {
+      this.reconnectAttempts = attempt;
     });
   }
 
@@ -19,6 +44,9 @@ export class MarketWebSocket {
   }
 
   disconnect() {
+    this.currentSymbol = null;
+    this.currentInterval = null;
+    this.currentCallback = null;
     if (this.socket.connected) {
       this.socket.disconnect();
     }
@@ -29,13 +57,21 @@ export class MarketWebSocket {
     interval: string,
     callback: (data: any) => void,
   ) {
+    this.currentSymbol = symbol;
+    this.currentInterval = interval;
+    this.currentCallback = callback;
+
     this.socket.emit('subscribe', { symbol, interval });
+    this.socket.off('candle'); // remove previous listener
     this.socket.on('candle', callback);
   }
 
   unsubscribe() {
     this.socket.emit('unsubscribe');
     this.socket.off('candle');
+    this.currentSymbol = null;
+    this.currentInterval = null;
+    this.currentCallback = null;
   }
 
   onConnect(callback: () => void) {
@@ -47,6 +83,11 @@ export class MarketWebSocket {
   }
 
   onError(callback: (error: any) => void) {
+    this.socket.on('connect_error', callback);
     this.socket.on('error', callback);
+  }
+
+  get isConnected(): boolean {
+    return this.socket.connected;
   }
 }

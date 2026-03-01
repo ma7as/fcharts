@@ -9,4 +9,4 @@ RUN pnpm install --frozen-lockfile --shamefully-hoist
 COPY apps/backend ./apps/backend
 COPY packages/database ./packages/database
 EXPOSE 8101
-CMD ["sh", "-c", "/app/node_modules/.bin/prisma generate --schema=/app/packages/database/prisma/schema.prisma && cd /app/apps/backend && /app/node_modules/.bin/nest start --watch"]
+CMD ["sh", "-c", "/app/node_modules/.bin/prisma generate --schema=/app/packages/database/prisma/schema.prisma && /app/node_modules/.bin/prisma migrate deploy --schema=/app/packages/database/prisma/schema.prisma && cd /app/apps/backend && /app/node_modules/.bin/nest start --watch"]

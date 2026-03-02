@@ -90,10 +90,6 @@ export function CandlestickChart({ symbol, interval }: Props) {
     };
   }, [symbol, interval]);
 
-  if (isLoading) {
-    return <div className="h-[600px] flex items-center justify-center bg-gray-900 text-gray-400">Loading...</div>;
-  }
-
   // Enriched metadata from API response
   const meta = data || {};
   const currency: string = meta.currency || 'USD';
@@ -118,6 +114,10 @@ export function CandlestickChart({ symbol, interval }: Props) {
     }
     return merged;
   }, [historicalData, realtimeCandles]);
+
+  if (isLoading) {
+    return <div className="h-[600px] flex items-center justify-center bg-gray-900 text-gray-400">Loading...</div>;
+  }
 
   const dates = mergedData.map((d) => new Date(d.timestamp).toLocaleString());
   const ohlc = mergedData.map((d) => [d.open, d.close, d.low, d.high]);

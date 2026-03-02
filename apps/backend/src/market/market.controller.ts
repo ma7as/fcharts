@@ -21,19 +21,16 @@ export class MarketController {
 
   @Get('indicators')
   @ApiOperation({ summary: 'Get OHLC data with moving average indicators' })
-  async getIndicators(
-    @Query() query: OhlcQueryDto,
-    @Query('ma') maPeriods?: string,
-  ) {
+  async getIndicators(@Query() query: OhlcQueryDto) {
     const ohlcData = await this.marketService.getOhlcData(query);
-    const periods = maPeriods?.split(',').map(Number) ?? [20, 50];
+    const periods = query.ma?.split(',').map(Number) ?? [20, 50];
 
-    const indicators = periods.map((period) => ({
-      name: `MA${period}`,
-      data: this.marketService.calculateMA(ohlcData.data, period),
-    }));
+    const ma: Record<string, number[]> = {};
+    periods.forEach((period) => {
+      ma[period.toString()] = this.marketService.calculateMA(ohlcData.data, period);
+    });
 
-    return { ...ohlcData, indicators };
+    return { ...ohlcData, ma };
   }
 
   @Get('ccl/:cedear')

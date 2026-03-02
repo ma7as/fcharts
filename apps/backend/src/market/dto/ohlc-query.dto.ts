@@ -40,4 +40,13 @@ export class OhlcQueryDto {
   @IsString()
   @IsOptional()
   source?: string;
+
+  @ApiProperty({
+    example: '20,50',
+    description: 'Moving average periods (comma-separated)',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  ma?: string;
 }

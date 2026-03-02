@@ -8,6 +8,9 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'Financial Charts - Real-time Market Data',
   description: 'Advanced financial charting platform with real-time data using ECharts',
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({

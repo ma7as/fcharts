@@ -79,11 +79,17 @@ async function main() {
   // ─── Demo user & portfolio ───────────────────────────────────────────────
   const user = await prisma.user.upsert({
     where: { email: 'demo@example.com' },
-    update: {},
+    update: {
+      password: '$2a$10$yYhb0Y/xqMN1s7OpYfun9.7pKOzSlHmwIPE.2f2tA0dlg2dHFd49m', // demo123
+      username: 'demo',
+      firstName: 'Demo',
+      lastName: 'User',
+      isActive: true,
+    },
     create: {
       email: 'demo@example.com',
       username: 'demo',
-      password: '$2b$10$YourHashedPasswordHere',
+      password: '$2a$10$yYhb0Y/xqMN1s7OpYfun9.7pKOzSlHmwIPE.2f2tA0dlg2dHFd49m', // demo123
       firstName: 'Demo',
       lastName: 'User',
       isActive: true,

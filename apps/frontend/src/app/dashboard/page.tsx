@@ -267,14 +267,14 @@ export default function DashboardPage() {
                               ${Number(position.costBasis).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
                             <td className={`px-6 py-4 whitespace-nowrap text-right text-sm font-medium ${
-                              (position.unrealizedPnL || 0) >= 0 ? 'text-green-400' : 'text-red-400'
+                              Number(position.unrealizedPnL || 0) >= 0 ? 'text-green-400' : 'text-red-400'
                             }`}>
-                              ${(position.unrealizedPnL || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              ${Number(position.unrealizedPnL || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
                             <td className={`px-6 py-4 whitespace-nowrap text-right text-sm font-medium ${
-                              (position.unrealizedPnLPct || 0) >= 0 ? 'text-green-400' : 'text-red-400'
+                              Number(position.unrealizedPnLPct || 0) >= 0 ? 'text-green-400' : 'text-red-400'
                             }`}>
-                              {(position.unrealizedPnLPct || 0).toFixed(2)}%
+                              {Number(position.unrealizedPnLPct || 0).toFixed(2)}%
                             </td>
                           </tr>
                         ))}

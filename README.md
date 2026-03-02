@@ -112,7 +112,7 @@ The seed script creates a demo user for testing:
 
 - **Email**: demo@example.com
 - **Username**: demo
-- **Password**: password
+- **Password**: demo123
 
 The demo user has a portfolio with 3 positions (BTC, AAPL, MSFT) and sample transaction history.
 

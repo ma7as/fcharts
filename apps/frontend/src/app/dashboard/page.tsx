@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocale } from '@/contexts/LocaleContext';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { portfoliosApi } from '@/lib/api-client';
@@ -38,6 +40,7 @@ interface Portfolio {
 
 export default function DashboardPage() {
   const { user, isLoading: authLoading, logout } = useAuth();
+  const { t } = useLocale();
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -62,7 +65,7 @@ export default function DashboardPage() {
         router.push('/login');
         return;
       }
-      setError(err?.response?.data?.message || err.message || 'Failed to load portfolios');
+      setError(err?.response?.data?.message || err.message || t('dashboard.error'));
     } finally {
       setIsLoading(false);
     }
@@ -88,7 +91,7 @@ export default function DashboardPage() {
   if (authLoading || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-950">
-        <div className="text-lg text-gray-300">Loading...</div>
+        <div className="text-lg text-gray-300">{t('common.loading')}</div>
       </div>
     );
   }
@@ -101,37 +104,38 @@ export default function DashboardPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center space-x-8">
-              <h1 className="text-xl font-bold text-white">Financial Charts</h1>
+              <h1 className="text-xl font-bold text-white">{t('nav.brand')}</h1>
               <div className="flex space-x-4">
                 <Link
                   href="/dashboard"
                   className="text-blue-400 px-3 py-2 rounded-md text-sm font-medium"
                 >
-                  Dashboard
+                  {t('nav.dashboard')}
                 </Link>
                 <Link
                   href="/charts"
                   className="text-gray-400 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
                 >
-                  Charts
+                  {t('nav.charts')}
                 </Link>
                 <Link
                   href="/ccl"
                   className="text-gray-400 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
                 >
-                  CCL
+                  {t('nav.ccl')}
                 </Link>
               </div>
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-300">
-                {user?.firstName || user?.username || 'User'}
+                {user?.firstName || user?.username || t('common.user')}
               </span>
+              <LanguageSwitcher />
               <button
                 onClick={logout}
                 className="text-sm text-gray-400 hover:text-white"
               >
-                Logout
+                {t('nav.logout')}
               </button>
             </div>
           </div>
@@ -141,7 +145,7 @@ export default function DashboardPage() {
       <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
           <div className="mb-6">
-            <h2 className="text-2xl font-bold text-white">Portfolio Overview</h2>
+            <h2 className="text-2xl font-bold text-white">{t('dashboard.title')}</h2>
           </div>
 
           {error && (
@@ -153,25 +157,25 @@ export default function DashboardPage() {
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div className="bg-gray-900 rounded-lg shadow border border-gray-800 p-6">
-              <p className="text-sm text-gray-400">Total Value</p>
+              <p className="text-sm text-gray-400">{t('dashboard.totalValue')}</p>
               <p className="text-2xl font-bold text-white">
                 ${totals.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
             </div>
             <div className="bg-gray-900 rounded-lg shadow border border-gray-800 p-6">
-              <p className="text-sm text-gray-400">Total Cost</p>
+              <p className="text-sm text-gray-400">{t('dashboard.totalCost')}</p>
               <p className="text-2xl font-bold text-white">
                 ${totals.totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
             </div>
             <div className="bg-gray-900 rounded-lg shadow border border-gray-800 p-6">
-              <p className="text-sm text-gray-400">Total P&L</p>
+              <p className="text-sm text-gray-400">{t('dashboard.totalPnl')}</p>
               <p className={`text-2xl font-bold ${totals.totalPnL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 ${totals.totalPnL.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
             </div>
             <div className="bg-gray-900 rounded-lg shadow border border-gray-800 p-6">
-              <p className="text-sm text-gray-400">Total Return</p>
+              <p className="text-sm text-gray-400">{t('dashboard.totalReturn')}</p>
               <p className={`text-2xl font-bold ${totals.totalPnLPct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {totals.totalPnLPct.toFixed(2)}%
               </p>
@@ -189,7 +193,7 @@ export default function DashboardPage() {
                         {portfolio.name}
                         {portfolio.isDefault && (
                           <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-900 text-blue-300">
-                            Default
+                            {t('common.default')}
                           </span>
                         )}
                       </h3>
@@ -199,7 +203,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-gray-400">
-                        {portfolio._count.positions} positions · {portfolio._count.transactions} transactions
+                        {t('dashboard.positionSummary', { positions: portfolio._count.positions, transactions: portfolio._count.transactions })}
                       </p>
                     </div>
                   </div>
@@ -207,7 +211,7 @@ export default function DashboardPage() {
 
                 {portfolio.positions.length === 0 ? (
                   <div className="px-6 py-8 text-center text-gray-500">
-                    No positions yet
+                    {t('dashboard.noPositions')}
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
@@ -215,28 +219,28 @@ export default function DashboardPage() {
                       <thead className="bg-gray-800">
                         <tr>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                            Symbol
+                            {t('dashboard.symbol')}
                           </th>
                           <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
-                            Quantity
+                            {t('dashboard.quantity')}
                           </th>
                           <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
-                            Avg Price
+                            {t('dashboard.avgPrice')}
                           </th>
                           <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
-                            Current Price
+                            {t('dashboard.currentPrice')}
                           </th>
                           <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
-                            Market Value
+                            {t('dashboard.marketValue')}
                           </th>
                           <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
-                            Cost Basis
+                            {t('dashboard.costBasis')}
                           </th>
                           <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
-                            P&L
+                            {t('dashboard.pnl')}
                           </th>
                           <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
-                            Return
+                            {t('dashboard.return')}
                           </th>
                         </tr>
                       </thead>
@@ -287,7 +291,7 @@ export default function DashboardPage() {
 
             {portfolios.length === 0 && (
               <div className="bg-gray-900 rounded-lg shadow border border-gray-800 p-8 text-center">
-                <p className="text-gray-500">No portfolios yet. Create your first portfolio to start tracking your investments.</p>
+                <p className="text-gray-500">{t('dashboard.noPortfolios')}</p>
               </div>
             )}
           </div>

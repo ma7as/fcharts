@@ -1,11 +1,11 @@
-# Financial Charts Monorepo
+# Financial Charts
 
 ## 🎉 Proyecto Completamente Generado!
 
-### ✅ Estructura Creada
+### ✅ Estructura del Proyecto
 
 ```
-financial-charts-monorepo/
+fcharts/
 ├── apps/
 │   ├── backend/              ✅ NestJS Backend
 │   └── frontend/             ✅ Next.js Frontend
@@ -39,7 +39,7 @@ financial-charts-monorepo/
 
 #### 1. Navegar al proyecto
 ```powershell
-cd b:\github\chartjs-chart-financial-sad\financial-charts-monorepo
+cd b:\github\fcharts
 ```
 
 #### 2. Instalar pnpm (si no lo tienes)
@@ -57,40 +57,68 @@ pnpm install
 Copy-Item .env.example .env
 ```
 
-#### 5. Iniciar servicios con Docker
-```powershell
-# Inicia PostgreSQL y Redis
-pnpm docker:up
+#### 5. Elegir modo de desarrollo
 
-# Espera ~10 segundos a que los servicios estén listos
-```
+Tienes **dos opciones** para ejecutar la aplicación:
 
-#### 6. Configurar base de datos
+##### 🔹 Opción A: Desarrollo Local (Recomendado para iteración rápida)
+
+Ejecuta solo bases de datos en Docker, aplicaciones corren directamente con Node.js:
+
 ```powershell
-# Genera el cliente de Prisma y crea las tablas
+# 1. Iniciar PostgreSQL y Redis en Docker
+docker-compose up -d
+
+# 2. Esperar ~10 segundos a que los servicios estén listos
+
+# 3. Generar cliente de Prisma
+pnpm db:generate
+
+# 4. Crear tablas en la base de datos
 pnpm db:push
 
-# Inserta datos de prueba (símbolos de criptomonedas)
+# 5. Insertar datos de prueba
 pnpm db:seed
+
+# 6. Iniciar aplicaciones
+pnpm dev              # Inicia frontend y backend
+# O iniciar por separado:
+pnpm dev:frontend     # Terminal 1 - http://localhost:8100
+pnpm dev:backend      # Terminal 2 - http://localhost:8101
 ```
 
-#### 7. Iniciar aplicaciones
+**Ventajas:** Hot-reload rápido, debugging fácil, acceso directo a node_modules  
+**Desventajas:** Requiere Node.js 20+ instalado localmente
+
+##### 🔹 Opción B: Docker Completo
+
+Ejecuta todo en contenedores Docker (bases de datos + aplicaciones):
+
 ```powershell
-# Opción A: Iniciar todo junto
-pnpm dev
+# 1. Generar cliente de Prisma localmente primero
+pnpm db:generate
 
-# Opción B: Iniciar por separado (en diferentes terminales)
-pnpm dev:frontend   # Terminal 1 - http://localhost:3000
-pnpm dev:backend    # Terminal 2 - http://localhost:3001
+# 2. Iniciar todos los servicios con Docker Compose
+docker-compose -f docker-compose.all.yml up -d --build
+
+# 3. Insertar datos de prueba (opcional)
+docker exec fc-backend sh -c "cd /app/packages/database && node -r esbuild-register prisma/seed.ts"
 ```
+
+**Ventajas:** Entorno consistente, no requiere Node.js local, más cercano a producción  
+**Desventajas:** Hot-reload más lento, consume más recursos
+
+> **ℹ️ Configuración de Base de Datos**: Este proyecto usa Prisma 5.22.0 para la gestión de base de datos. La variable `DATABASE_URL` se carga automáticamente desde el archivo `.env`.
 
 ### 🌐 URLs Disponibles
 
-Una vez iniciado todo:
+Una vez iniciado todo (ambas opciones usan los mismos puertos):
 
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:3001
-- **API Docs (Swagger)**: http://localhost:3001/api/docs
+- **Frontend**: http://localhost:8100
+- **Backend API**: http://localhost:8101
+- **API Docs (Swagger)**: http://localhost:8101/api/docs
+- **PostgreSQL**: localhost:8102 (postgres/postgres)
+- **Redis**: localhost:8103
 - **Prisma Studio**: Ejecuta `pnpm db:studio`
 
 ### 🎯 Características Implementadas
@@ -130,20 +158,33 @@ Receives: candle (real-time updates)
 ### 🛠️ Comandos Útiles
 
 ```powershell
-# Ver logs de Docker
-pnpm docker:logs
+# Docker - Solo Bases de Datos (Opción A)
+docker-compose up -d          # Iniciar PostgreSQL + Redis
+docker-compose down           # Detener bases de datos
+docker-compose logs -f        # Ver logs
 
-# Parar Docker
-pnpm docker:down
+# Docker - Stack Completo (Opción B)
+docker-compose -f docker-compose.all.yml up -d --build     # Iniciar todo
+docker-compose -f docker-compose.all.yml down              # Detener todo
+docker-compose -f docker-compose.all.yml logs -f backend   # Ver logs backend
+docker-compose -f docker-compose.all.yml logs -f frontend  # Ver logs frontend
+docker-compose -f docker-compose.all.yml restart backend   # Reiniciar backend
 
-# Abrir Prisma Studio (UI para la base de datos)
-pnpm db:studio
+# Desarrollo Local
+pnpm dev              # Iniciar frontend + backend
+pnpm dev:frontend     # Solo frontend
+pnpm dev:backend      # Solo backend
 
-# Lint código
-pnpm lint
+# Base de Datos
+pnpm db:generate      # Generar cliente Prisma
+pnpm db:push          # Sincronizar schema
+pnpm db:seed          # Insertar datos de prueba
+pnpm db:studio        # Abrir Prisma Studio (UI)
 
-# Build para producción
-pnpm build
+# Build y Testing
+pnpm build            # Build para producción
+pnpm lint             # Lint código
+pnpm test             # Tests
 ```
 
 ### 🐛 Solución de Problemas
@@ -186,4 +227,14 @@ pnpm install --force
 
 **¡El proyecto está listo para usar! 🎉**
 
-Ejecuta `pnpm dev` y abre http://localhost:3000
+**Opción A (Local):** Ejecuta `docker-compose up -d && pnpm dev` y abre http://localhost:8100  
+**Opción B (Docker):** Ejecuta `docker-compose -f docker-compose.all.yml up -d --build` y abre http://localhost:8100
+
+### 👤 Usuario Demo
+
+El script de seed crea un usuario de prueba:
+- **Email**: demo@example.com
+- **Usuario**: demo  
+- **Contraseña**: demo123
+
+El usuario demo tiene un portfolio con 3 posiciones (BTC, AAPL, MSFT) e historial de transacciones.

@@ -3,8 +3,10 @@
 import { CandlestickChart } from '@/components/CandlestickChart';
 import { SymbolSelector } from '@/components/SymbolSelector';
 import { IntervalSelector } from '@/components/IntervalSelector';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocale } from '@/contexts/LocaleContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -12,6 +14,7 @@ export default function ChartsPage() {
   const [symbol, setSymbol] = useState('BTCUSDT');
   const [interval, setInterval] = useState('1h');
   const { user, logout } = useAuth();
+  const { t } = useLocale();
   const router = useRouter();
 
   return (
@@ -20,26 +23,26 @@ export default function ChartsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center space-x-8">
-              <h1 className="text-xl font-bold text-white">Financial Charts</h1>
+              <h1 className="text-xl font-bold text-white">{t('nav.brand')}</h1>
               {user && (
                 <div className="flex space-x-4">
                   <Link
                     href="/dashboard"
                     className="text-gray-400 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
                   >
-                    Dashboard
+                    {t('nav.dashboard')}
                   </Link>
                   <Link
                     href="/charts"
                     className="text-blue-400 px-3 py-2 rounded-md text-sm font-medium"
                   >
-                    Charts
+                    {t('nav.charts')}
                   </Link>
                   <Link
                     href="/ccl"
                     className="text-gray-400 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
                   >
-                    CCL
+                    {t('nav.ccl')}
                   </Link>
                 </div>
               )}
@@ -48,13 +51,14 @@ export default function ChartsPage() {
               {user ? (
                 <>
                   <span className="text-sm text-gray-300">
-                    {user?.firstName || user?.username || 'User'}
+                    {user?.firstName || user?.username || t('common.user')}
                   </span>
+                  <LanguageSwitcher />
                   <button
                     onClick={logout}
                     className="text-sm text-gray-400 hover:text-white"
                   >
-                    Logout
+                    {t('nav.logout')}
                   </button>
                 </>
               ) : (
@@ -62,7 +66,7 @@ export default function ChartsPage() {
                   href="/login"
                   className="text-sm text-blue-400 hover:text-blue-300"
                 >
-                  Login
+                  {t('nav.login')}
                 </Link>
               )}
             </div>

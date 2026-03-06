@@ -58,7 +58,7 @@ Full-stack financial application with real-time market data, portfolio tracking,
 
 ```bash
 git clone <your-repo-url>
-cd financial-charts
+cd fcharts
 
 # Install pnpm globally if you haven't
 npm install -g pnpm
@@ -76,35 +76,58 @@ cp .env.example .env
 # Edit .env with your settings (optional, defaults work for local dev)
 ```
 
-### 3. Start Services with Docker Compose
+### 3. Choose Your Development Mode
+
+You have **two options** for running the application:
+
+#### 🔹 Option A: Local Development (Recommended for fast iteration)
+
+Run only databases in Docker, applications run directly with Node.js for hot-reload:
 
 ```bash
-# Start PostgreSQL and Redis
-pnpm docker:up
+# 1. Start PostgreSQL and Redis in Docker
+docker-compose up -d
 
-# Wait for services to be healthy (~10 seconds)
-```
+# 2. Wait for services to be healthy (~10 seconds)
 
-### 4. Setup Database
+# 3. Generate Prisma client
+pnpm db:generate
 
-```bash
-# Generate Prisma client
+# 4. Push schema to database
 pnpm db:push
 
-# Seed initial data
+# 5. Seed initial data
 pnpm db:seed
+
+# 6. Start applications
+pnpm dev              # Starts both frontend and backend
+# Or start individually:
+pnpm dev:frontend     # http://localhost:8100
+pnpm dev:backend      # http://localhost:8101
 ```
 
-### 5. Start Development Servers
+**Pros:** Faster hot-reload, easier debugging, direct access to node_modules  
+**Cons:** Requires Node.js 20+ installed locally
+
+#### 🔹 Option B: Full Docker Development
+
+Run everything in Docker containers (databases + applications):
 
 ```bash
-# Development (without Docker, direct Node.js)
-pnpm dev
+# 1. Generate Prisma client locally first
+pnpm db:generate
 
-# Or start individually:
-pnpm dev:frontend  # http://localhost:3000
-pnpm dev:backend   # http://localhost:3001
+# 2. Start all services with Docker Compose
+docker-compose -f docker-compose.all.yml up -d --build
+
+# 3. Seed database (optional)
+docker exec fc-backend sh -c "cd /app/packages/database && node -r esbuild-register prisma/seed.ts"
 ```
+
+**Pros:** Consistent environment, no local Node.js setup needed, closer to production  
+**Cons:** Slower hot-reload, more resource-intensive
+
+> **ℹ️ Database Configuration**: This project uses Prisma 5.22.0 for database management. The `DATABASE_URL` is loaded automatically from the `.env` file.
 
 ## 🧪 Demo User Credentials
 
@@ -124,16 +147,22 @@ pnpm dev              # Start all services (requires manual DB setup)
 pnpm dev:frontend     # Start Next.js frontend only
 pnpm dev:backend      # Start NestJS backend only
 
-# Docker (Recommended)
-docker-compose up -d  # Start all containers (includes DB, Redis)
-docker-compose down   # Stop all containers
-docker-compose logs -f backend  # View backend logs
-docker-compose logs -f frontend # View frontend logs
+# Docker - Only Databases
+docker-compose up -d           # Start PostgreSQL + Redis
+docker-compose down            # Stop databases
+docker-compose logs -f         # View logs
 
-# Database (inside backend container)
-docker exec financial-charts-backend sh -c "cd /app && pnpm db:generate"  # Generate Prisma Client
-docker exec financial-charts-backend sh -c "cd /app && pnpm db:migrate"   # Run migrations
-docker exec financial-charts-backend sh -c "cd /app && pnpm db:seed"      # Seed database
+# Docker - Full Stack
+docker-compose -f docker-compose.all.yml up -d --build  # Start everything
+docker-compose -f docker-compose.all.yml down           # Stop all containers
+docker-compose -f docker-compose.all.yml logs -f backend   # View backend logs
+docker-compose -f docker-compose.all.yml logs -f frontend  # View frontend logs
+
+# Database Management
+pnpm db:generate    # Generate Prisma Client
+pnpm db:push        # Push schema to database
+pnpm db:seed        # Seed initial data
+pnpm db:studio      # Open Prisma Studio UI
 
 # Build
 pnpm build            # Build all apps
@@ -147,22 +176,24 @@ pnpm test             # Test all apps
 
 ## 🌐 URLs
 
-### Docker (Default)
+### Local Development (Option A)
 - **Frontend**: http://localhost:8100
 - **Backend API**: http://localhost:8101
 - **API Docs (Swagger)**: http://localhost:8101/api/docs
 - **PostgreSQL**: localhost:8102 (postgres/postgres)
 - **Redis**: localhost:8103
 
-### Direct Node.js
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:3001
-- **API Docs (Swagger)**: http://localhost:3001/api/docs
+### Full Docker (Option B)
+- **Frontend**: http://localhost:8100
+- **Backend API**: http://localhost:8101
+- **API Docs (Swagger)**: http://localhost:8101/api/docs
+- **PostgreSQL**: localhost:8102 (postgres/postgres)
+- **Redis**: localhost:8103
 
 ## 📦 Project Structure
 
 ```
-financial-charts/
+fcharts/
 ├── apps/
 │   ├── frontend/          # Next.js application
 │   │   ├── src/
@@ -325,7 +356,7 @@ If these ports are in use, modify them in [docker-compose.yml](docker-compose.ym
 ### Prisma Client not found
 ```bash
 # Regenerate Prisma Client
-docker exec financial-charts-backend sh -c "cd /app && pnpm db:generate"
+docker exec fc-backend sh -c "cd /app && pnpm db:generate"
 
 # Restart backend
 docker-compose restart backend

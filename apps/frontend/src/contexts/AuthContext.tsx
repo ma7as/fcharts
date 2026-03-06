@@ -41,6 +41,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const checkAuth = async () => {
+    if (typeof window === 'undefined') {
+      setIsLoading(false);
+      return;
+    }
+
     const token = localStorage.getItem('access_token');
     if (!token) {
       setIsLoading(false);
@@ -60,20 +65,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (username: string, password: string) => {
     const res = await authApi.login(username, password);
-    localStorage.setItem('access_token', res.access_token);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('access_token', res.access_token);
+    }
     setUser(res.user);
     router.push('/dashboard');
   };
 
   const register = async (data: RegisterData) => {
     const res = await authApi.register(data);
-    localStorage.setItem('access_token', res.access_token);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('access_token', res.access_token);
+    }
     setUser(res.user);
     router.push('/dashboard');
   };
 
   const logout = () => {
-    localStorage.removeItem('access_token');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('access_token');
+    }
     setUser(null);
     router.push('/login');
   };

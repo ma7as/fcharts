@@ -1,18 +1,8 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { useLocale } from '@/contexts/LocaleContext';
 import { symbolsApi } from '@/lib/api-client';
-
-// Human-readable labels for each symbol type group
-const TYPE_LABEL: Record<string, string> = {
-  crypto:             '₿ Criptomonedas',
-  cedear:             '🇦🇷 CEDEARs (ARS)',
-  cedear_underlying:  '🌐 Subyacentes CEDEAR (USD)',
-  stock:              '📈 Acciones Argentinas',
-  etf:                '📦 ETFs',
-  bond:               '🏛 Bonos',
-  index:              '📊 Índices',
-};
 
 // Badge styles per currency
 const CURRENCY_BADGE: Record<string, string> = {
@@ -26,6 +16,7 @@ interface Props {
 }
 
 export function SymbolSelector({ value, onChange }: Props) {
+  const { t } = useLocale();
   const { data: symbols } = useQuery({
     queryKey: ['symbols'],
     queryFn: symbolsApi.getAll,
@@ -62,7 +53,7 @@ export function SymbolSelector({ value, onChange }: Props) {
         className="px-4 py-2 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
       >
         {Object.entries(groups).map(([type, items]) => (
-          <optgroup key={type} label={TYPE_LABEL[type] ?? type}>
+          <optgroup key={type} label={t(`symbolTypes.${type}`) ?? type}>
             {items.map((s: any) => (
               <option key={s.id} value={s.symbol}>
                 {s.name} ({s.symbol}) — {s.currency ?? 'USD'}
@@ -92,7 +83,7 @@ export function SymbolSelector({ value, onChange }: Props) {
             onClick={() => onChange(linkedUsdSymbol)}
             className="text-xs px-3 py-0.5 rounded border border-blue-700 bg-blue-900/40 text-blue-300 hover:bg-blue-800/60 transition-colors"
           >
-            Ver en USD ({linkedUsdSymbol})
+            {t('symbolSelector.viewInUsd', { symbol: linkedUsdSymbol })}
           </button>
         )}
 
@@ -102,7 +93,7 @@ export function SymbolSelector({ value, onChange }: Props) {
             onClick={() => onChange(linkedArsSymbol)}
             className="text-xs px-3 py-0.5 rounded border border-emerald-700 bg-emerald-900/40 text-emerald-300 hover:bg-emerald-800/60 transition-colors"
           >
-            Ver en ARS ({linkedArsSymbol})
+            {t('symbolSelector.viewInArs', { symbol: linkedArsSymbol })}
           </button>
         )}
       </div>

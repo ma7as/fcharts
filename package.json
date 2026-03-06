@@ -1,5 +1,5 @@
 {
-  "name": "financial-charts-monorepo",
+  "name": "financial-charts",
   "version": "1.0.0",
   "private": true,
   "description": "Full-stack financial charts application with ECharts, NestJS, Next.js, Prisma, and PostgreSQL",
@@ -13,6 +13,7 @@
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",
+    "db:generate": "pnpm --filter database db:generate",
     "db:push": "pnpm --filter database db:push",
     "db:migrate": "pnpm --filter database db:migrate",
     "db:studio": "pnpm --filter database db:studio",

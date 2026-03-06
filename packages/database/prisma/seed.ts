@@ -1,6 +1,17 @@
 ﻿import { PrismaClient } from '@prisma/client';
+import dotenv from 'dotenv';
+import { resolve } from 'path';
 
-const prisma = new PrismaClient();
+// Load environment variables from root
+dotenv.config({ path: resolve(__dirname, '../../../.env') });
+
+// Verify DATABASE_URL is set
+if (!process.env.DATABASE_URL) {
+  console.error('❌ DATABASE_URL not found in environment');
+  process.exit(1);
+}
+
+const prisma = new PrismaClient({});
 
 async function main() {
   console.log('🌱 Seeding database...');

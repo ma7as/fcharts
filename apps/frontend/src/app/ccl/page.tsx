@@ -5,6 +5,8 @@ import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocale } from '@/contexts/LocaleContext';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { marketApi, symbolsApi } from '@/lib/api-client';
 
 const ReactECharts = dynamic(() => import('echarts-for-react'), {
@@ -18,6 +20,7 @@ const ReactECharts = dynamic(() => import('echarts-for-react'), {
 
 export default function CclPage() {
   const { user, logout } = useAuth();
+  const { t } = useLocale();
   const [cedear, setCedear] = useState('GGAL');
 
   // Load all symbols to populate the CEDEAR selector
@@ -46,7 +49,7 @@ export default function CclPage() {
   const echartsOption = {
     backgroundColor: 'transparent',
     title: {
-      text: `CCL Implícito — ${cedear}`,
+      text: t('ccl.chartTitle', { cedear }),
       left: 'center',
       textStyle: { color: '#e5e7eb', fontSize: 16, fontWeight: 'bold' },
     },
@@ -57,14 +60,14 @@ export default function CclPage() {
       textStyle: { color: '#e5e7eb' },
       formatter: (params: any[]) => {
         const date = params[0]?.axisValue ?? '';
-        const ccl = params.find((p) => p.seriesName === 'CCL')?.value ?? '—';
-        const ars = params.find((p) => p.seriesName === 'Precio ARS')?.value ?? '—';
-        const usd = params.find((p) => p.seriesName === 'Precio USD')?.value ?? '—';
+        const ccl = params.find((p) => p.seriesName === t('ccl.serieCcl'))?.value ?? '—';
+        const ars = params.find((p) => p.seriesName === t('ccl.serieArs'))?.value ?? '—';
+        const usd = params.find((p) => p.seriesName === t('ccl.serieUsd'))?.value ?? '—';
         return `
           <strong>${date}</strong><br/>
-          CCL implícito: <strong style="color:#60a5fa">$${ccl}</strong><br/>
-          Precio ARS: $${typeof ars === 'number' ? ars.toLocaleString('es-AR') : ars}<br/>
-          Precio USD: $${usd}
+          ${t('ccl.tooltipCcl')}: <strong style="color:#60a5fa">$${ccl}</strong><br/>
+          ${t('ccl.tooltipArs')}: $${typeof ars === 'number' ? ars.toLocaleString('es-AR') : ars}<br/>
+          ${t('ccl.tooltipUsd')}: $${usd}
         `;
       },
     },
@@ -97,7 +100,7 @@ export default function CclPage() {
     ],
     yAxis: [
       {
-        name: 'CCL (ARS/USD)',
+        name: t('ccl.yAxisCcl'),
         nameTextStyle: { color: '#9ca3af', fontSize: 11 },
         scale: true,
         axisLabel: { color: '#9ca3af', formatter: (v: number) => `$${v}` },
@@ -105,7 +108,7 @@ export default function CclPage() {
         splitLine: { lineStyle: { color: '#1f2937' } },
       },
       {
-        name: 'Precio',
+        name: t('ccl.yAxisPrice'),
         nameTextStyle: { color: '#9ca3af', fontSize: 11 },
         gridIndex: 1,
         scale: true,
@@ -139,7 +142,7 @@ export default function CclPage() {
     ],
     series: [
       {
-        name: 'CCL',
+        name: t('ccl.serieCcl'),
         type: 'line',
         data: cclValues,
         smooth: true,
@@ -157,7 +160,7 @@ export default function CclPage() {
         symbol: 'none',
       },
       {
-        name: 'Precio ARS',
+        name: t('ccl.serieArs'),
         type: 'line',
         xAxisIndex: 1,
         yAxisIndex: 1,
@@ -167,7 +170,7 @@ export default function CclPage() {
         symbol: 'none',
       },
       {
-        name: 'Precio USD',
+        name: t('ccl.serieUsd'),
         type: 'line',
         xAxisIndex: 1,
         yAxisIndex: 1,
@@ -186,17 +189,17 @@ export default function CclPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center space-x-8">
-              <h1 className="text-xl font-bold text-white">Financial Charts</h1>
+              <h1 className="text-xl font-bold text-white">{t('nav.brand')}</h1>
               {user && (
                 <div className="flex space-x-4">
                   <Link href="/dashboard" className="text-gray-400 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
-                    Dashboard
+                    {t('nav.dashboard')}
                   </Link>
                   <Link href="/charts" className="text-gray-400 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
-                    Charts
+                    {t('nav.charts')}
                   </Link>
                   <Link href="/ccl" className="text-emerald-400 px-3 py-2 rounded-md text-sm font-medium">
-                    CCL
+                    {t('nav.ccl')}
                   </Link>
                 </div>
               )}
@@ -205,8 +208,9 @@ export default function CclPage() {
               {user && (
                 <>
                   <span className="text-sm text-gray-300">{user?.firstName || user?.username}</span>
+                  <LanguageSwitcher />
                   <button onClick={logout} className="text-sm text-gray-400 hover:text-white">
-                    Logout
+                    {t('nav.logout')}
                   </button>
                 </>
               )}
@@ -217,9 +221,9 @@ export default function CclPage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-white mb-1">CCL Implícito por CEDEAR</h2>
+          <h2 className="text-2xl font-bold text-white mb-1">{t('ccl.pageTitle')}</h2>
           <p className="text-gray-400 text-sm">
-            El tipo de cambio contado con liquidación (CCL) implícito se calcula como:{' '}
+            {t('ccl.description')}{' '}
             <code className="bg-gray-800 px-1 rounded text-emerald-300">CCL = Precio ARS / (Precio USD × Ratio)</code>
           </p>
         </div>
@@ -227,7 +231,7 @@ export default function CclPage() {
         {/* Controls */}
         <div className="flex flex-wrap items-end gap-4 mb-6">
           <div>
-            <label className="block text-sm text-gray-400 mb-1">CEDEAR</label>
+            <label className="block text-sm text-gray-400 mb-1">{t('ccl.cedearLabel')}</label>
             <select
               value={cedear}
               onChange={(e) => setCedear(e.target.value)}
@@ -244,12 +248,12 @@ export default function CclPage() {
 
           {latestCcl !== null && (
             <div className="bg-gray-900 border border-gray-700 rounded-lg px-5 py-3 text-center">
-              <div className="text-xs text-gray-400 mb-0.5">CCL actual</div>
+              <div className="text-xs text-gray-400 mb-0.5">{t('ccl.currentCcl')}</div>
               <div className="text-2xl font-bold text-emerald-400">
                 ${latestCcl.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               {cclData?.ratio && (
-                <div className="text-xs text-gray-500 mt-0.5">ratio {cclData.ratio}:1</div>
+                <div className="text-xs text-gray-500 mt-0.5">{t('ccl.ratio', { ratio: cclData.ratio })}</div>
               )}
             </div>
           )}
@@ -258,13 +262,13 @@ export default function CclPage() {
         {/* Chart */}
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
           {isLoading ? (
-            <div className="h-[400px] flex items-center justify-center text-gray-400">Cargando datos...</div>
+            <div className="h-[400px] flex items-center justify-center text-gray-400">{t('ccl.loading')}</div>
           ) : series.length === 0 ? (
             <div className="h-[400px] flex flex-col items-center justify-center text-gray-400 gap-2">
               <span className="text-4xl">📊</span>
-              <span>No hay datos disponibles para {cedear}.</span>
+              <span>{t('ccl.noData', { cedear })}</span>
               <span className="text-sm text-gray-500">
-                Asegurate de tener configuradas las credenciales de IOL y Finnhub, y de haber ejecutado el seed.
+                {t('ccl.noDataHint')}
               </span>
             </div>
           ) : (
@@ -278,10 +282,10 @@ export default function CclPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-800 bg-gray-950">
-                  <th className="text-left px-4 py-3 text-gray-400 font-medium">Fecha</th>
-                  <th className="text-right px-4 py-3 text-gray-400 font-medium">Precio ARS</th>
-                  <th className="text-right px-4 py-3 text-gray-400 font-medium">Precio USD ({cclData?.underlying})</th>
-                  <th className="text-right px-4 py-3 text-gray-400 font-medium">CCL Implícito</th>
+                  <th className="text-left px-4 py-3 text-gray-400 font-medium">{t('ccl.tableDate')}</th>
+                  <th className="text-right px-4 py-3 text-gray-400 font-medium">{t('ccl.tableArs')}</th>
+                  <th className="text-right px-4 py-3 text-gray-400 font-medium">{t('ccl.tableUsd', { underlying: cclData?.underlying ?? '' })}</th>
+                  <th className="text-right px-4 py-3 text-gray-400 font-medium">{t('ccl.tableCcl')}</th>
                 </tr>
               </thead>
               <tbody>

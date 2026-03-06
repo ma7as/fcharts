@@ -6,5 +6,5 @@ COPY apps/frontend/package.json ./apps/frontend/
 COPY packages/database/package.json ./packages/database/
 RUN pnpm install --frozen-lockfile --shamefully-hoist
 COPY apps/frontend ./apps/frontend
-EXPOSE 3000
-CMD ["sh", "-c", "cd /app/apps/frontend && /app/node_modules/.bin/next dev"]
+EXPOSE 8100
+CMD ["sh", "-c", "cd /app/apps/frontend && /app/node_modules/.bin/next dev --port 8100"]

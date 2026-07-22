@@ -5,6 +5,19 @@ const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8101';
 const MAX_RECONNECT_ATTEMPTS = 10;
 const RECONNECT_DELAY_MS = 3000;
 
+/**
+ * Market WebSocket wrapper.
+ *
+ * Auth: the httpOnly access cookie is sent automatically with the
+ * upgrade request because socket.io runs over an HTTP handshake and
+ * browsers include cookies on same-origin requests by default. For
+ * cross-origin (frontend :8100 vs backend :8101) we need
+ * `withCredentials: true` so the browser attaches the cookie to the
+ * upgrade request.
+ *
+ * No token ever lives in JavaScript — the gateway reads the cookie
+ * from the handshake headers.
+ */
 export class MarketWebSocket {
   private socket: Socket;
   private currentSymbol: string | null = null;
@@ -19,9 +32,9 @@ export class MarketWebSocket {
       reconnection: true,
       reconnectionAttempts: MAX_RECONNECT_ATTEMPTS,
       reconnectionDelay: RECONNECT_DELAY_MS,
+      withCredentials: true,
     });
 
-    // Re-subscribe after reconnect
     this.socket.on('connect', () => {
       this.reconnectAttempts = 0;
       if (this.currentSymbol && this.currentInterval && this.currentCallback) {
@@ -62,7 +75,7 @@ export class MarketWebSocket {
     this.currentCallback = callback;
 
     this.socket.emit('subscribe', { symbol, interval });
-    this.socket.off('candle'); // remove previous listener
+    this.socket.off('candle');
     this.socket.on('candle', callback);
   }
 

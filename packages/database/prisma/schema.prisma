@@ -71,10 +71,34 @@ model User {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  watchlists  Watchlist[]
-  portfolios  Portfolio[]
+  watchlists    Watchlist[]
+  portfolios    Portfolio[]
+  refreshTokens RefreshToken[]
 
   @@map("users")
+}
+
+/// Persistent refresh-token store. Tokens are stored as SHA-256 hashes,
+/// not plaintext, so a DB leak cannot be used to forge sessions.
+///
+/// Rotation: each /api/v1/auth/refresh call marks the old row as `usedAt`
+/// and issues a new row with the same `family`. Reuse of a used row
+/// invalidates the entire family — defence in depth against token theft.
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique // SHA-256 of the opaque refresh token
+  family    String    // Group id shared by every refresh issued from one login
+  expiresAt DateTime
+  usedAt    DateTime?
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([family])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
 }
 
 model Watchlist {

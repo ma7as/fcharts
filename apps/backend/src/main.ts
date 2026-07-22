@@ -1,15 +1,22 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import * as cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const logger = new Logger('Bootstrap');
 
-  // Enable CORS
+  // Parse cookies for the httpOnly auth-token strategy.
+  app.use(cookieParser());
+
+  // CORS: only the configured origin may call us with credentials.
+  // credentials: true is required so the browser sends the httpOnly cookies.
+  const allowedOrigin = process.env.CORS_ORIGIN || 'http://localhost:8100';
   app.enableCors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:8100',
+    origin: allowedOrigin,
     credentials: true,
   });
 
@@ -46,6 +53,7 @@ async function bootstrap() {
   logger.log(`Backend is running on: http://localhost:${port}`);
   if (process.env.NODE_ENV !== 'production') {
     logger.log(`Swagger docs: http://localhost:${port}/api/docs`);
+    logger.log(`CORS origin (with credentials): ${allowedOrigin}`);
   }
 }
 

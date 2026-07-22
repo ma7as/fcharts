@@ -17,7 +17,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (username: string, password: string) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 interface RegisterData {
@@ -35,55 +35,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  // On mount, check for stored token and validate it
+  // On mount, ask the backend who we are. The httpOnly access cookie is
+  // sent automatically by the browser via withCredentials.
   useEffect(() => {
     checkAuth();
   }, []);
 
   const checkAuth = async () => {
-    if (typeof window === 'undefined') {
-      setIsLoading(false);
-      return;
-    }
-
-    const token = localStorage.getItem('access_token');
-    if (!token) {
-      setIsLoading(false);
-      return;
-    }
-
     try {
       const profile = await authApi.getProfile();
       setUser(profile);
     } catch {
-      // Token expired / invalid — clear it
-      localStorage.removeItem('access_token');
+      // Not authenticated — that's fine, user stays null.
+      setUser(null);
     } finally {
       setIsLoading(false);
     }
   };
 
   const login = async (username: string, password: string) => {
-    const res = await authApi.login(username, password);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('access_token', res.access_token);
-    }
-    setUser(res.user);
+    await authApi.login(username, password);
+    // Cookies are now set. Fetch profile to populate the user state.
+    const profile = await authApi.getProfile();
+    setUser(profile);
     router.push('/dashboard');
   };
 
   const register = async (data: RegisterData) => {
-    const res = await authApi.register(data);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('access_token', res.access_token);
-    }
-    setUser(res.user);
+    await authApi.register(data);
+    const profile = await authApi.getProfile();
+    setUser(profile);
     router.push('/dashboard');
   };
 
-  const logout = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('access_token');
+  const logout = async () => {
+    try {
+      await authApi.logout(); // Backend revokes refresh + clears cookies
+    } catch {
+      // Even if the call fails, we still clear local state.
     }
     setUser(null);
     router.push('/login');

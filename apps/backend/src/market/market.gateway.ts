@@ -4,19 +4,34 @@ import {
   SubscribeMessage,
   OnGatewayConnection,
   OnGatewayDisconnect,
-  ConnectedSocket,
-  MessageBody,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { MarketDataRegistry } from './providers/market-data-registry.service';
+import { ACCESS_TOKEN_COOKIE } from '../auth/constants';
 
 interface JwtPayload {
   sub: string;
   username: string;
   email: string;
+}
+
+/**
+ * Parse the raw Cookie header from the WS handshake. Avoids pulling in
+ * the `cookie` package just for this — we only need the access token.
+ */
+function parseCookieHeader(
+  header: string | undefined,
+  name: string,
+): string | undefined {
+  if (!header) return undefined;
+  for (const part of header.split(';')) {
+    const [k, ...rest] = part.trim().split('=');
+    if (k === name) return decodeURIComponent(rest.join('='));
+  }
+  return undefined;
 }
 
 @WebSocketGateway({
@@ -39,28 +54,33 @@ export class MarketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {}
 
   /**
-   * Validate the JWT in the `auth.token` handshake field. Reject the
-   * connection immediately if invalid — anonymous clients must not be
-   * able to open upstream provider streams or exhaust quotas.
+   * Validate the JWT from (in order):
+   *   1. `auth.token` (legacy / explicit, mainly for non-browser clients)
+   *   2. `Authorization: Bearer ...` header (legacy)
+   *   3. `fc_access_token` cookie — the canonical browser path
+   *
+   * Reject the connection immediately if no valid token is present.
    */
   async handleConnection(client: Socket): Promise<void> {
     try {
-      const token =
-        (client.handshake.auth?.token as string | undefined) ??
-        (client.handshake.headers['authorization'] as string | undefined)?.replace(
-          /^Bearer\s+/i,
-          '',
-        );
+      const fromAuth = client.handshake.auth?.token as string | undefined;
+      const fromHeader = (
+        client.handshake.headers['authorization'] as string | undefined
+      )?.replace(/^Bearer\s+/i, '');
+      const fromCookie = parseCookieHeader(
+        client.handshake.headers.cookie,
+        ACCESS_TOKEN_COOKIE,
+      );
 
+      const token = fromAuth ?? fromHeader ?? fromCookie;
       if (!token) {
         throw new UnauthorizedException('Missing auth token');
       }
 
       const payload = await this.jwtService.verifyAsync<JwtPayload>(token);
-      // Attach user info for downstream handlers
-      (client.data as { userId?: string; username?: string }).userId = payload.sub;
-      (client.data as { userId?: string; username?: string }).username =
-        payload.username;
+      const data = client.data as { userId?: string; username?: string };
+      data.userId = payload.sub;
+      data.username = payload.username;
 
       this.logger.log(`Client connected: ${client.id} (user ${payload.sub})`);
     } catch (err) {
@@ -84,10 +104,8 @@ export class MarketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     const { symbol, interval } = payload;
 
-    // Cancel any existing stream for this client
     this.cleanup(client.id);
 
-    // Resolve dataSource from DB; fallback to binance
     const symbolRecord = await this.prisma.symbol.findUnique({
       where: { symbol },
     });
@@ -95,7 +113,7 @@ export class MarketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const provider = this.registry.getProvider(dataSource);
 
     this.logger.log(
-      `Subscribing ${client.id} → ${symbol}/${interval} via ${dataSource}`,
+      `Subscribing ${client.id} \u2192 ${symbol}/${interval} via ${dataSource}`,
     );
 
     const unsubscribe = provider.streamCandles(symbol, interval, (candle) => {

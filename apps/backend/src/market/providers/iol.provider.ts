@@ -1,9 +1,19 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { ConfigService } from '@nestjs/config';
 import { IMarketDataProvider } from './market-data-provider.interface';
 import { CandleData } from './candle-data.type';
+
+interface IolTokenSet {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: Date;
+}
 
 /**
  * IOL (Invertir Online) provider — BYMA market data in ARS.
@@ -14,15 +24,20 @@ import { CandleData } from './candle-data.type';
  *
  * BYMA market hours: Mon–Fri 11:00–17:00 ART (UTC-3).
  * No WebSocket available — real-time is emulated via polling every 60 seconds.
+ *
+ * Token storage: in-memory singleton with TTL. For multi-instance deployments
+ * this would need Redis; for the current single-instance dev setup it's fine
+ * because tokens are tied to the process anyway (revoking on another node
+ * wouldn't help if all nodes share the same IOL user).
  */
 @Injectable()
-export class IolProvider implements IMarketDataProvider {
+export class IolProvider implements IMarketDataProvider, OnModuleDestroy {
   private readonly logger = new Logger(IolProvider.name);
   private readonly BASE_URL: string;
 
-  private accessToken: string | null = null;
-  private refreshToken: string | null = null;
-  private tokenExpiresAt: Date | null = null;
+  private tokens: IolTokenSet | null = null;
+  /** In-flight auth promise so concurrent requests share one round-trip. */
+  private inflightAuth: Promise<string> | null = null;
 
   constructor(
     private readonly httpService: HttpService,
@@ -32,9 +47,27 @@ export class IolProvider implements IMarketDataProvider {
       this.config.get<string>('IOL_BASE_URL') ?? 'https://api.invertironline.com';
   }
 
+  onModuleDestroy(): void {
+    // Drop token state. The polling loops live inside streamCandles closures,
+    // not as module-level timers, so there's nothing else to cancel here.
+    this.tokens = null;
+    this.inflightAuth = null;
+    this.logger.log('IOL token cache cleared on shutdown');
+  }
+
   // ─── Authentication ──────────────────────────────────────────────
 
-  private async authenticate(): Promise<void> {
+  /**
+   * Force a clean re-authentication (clears any cached tokens first).
+   * Called when the refresh path fails — likely because the refresh
+   * token itself expired or was revoked server-side.
+   */
+  async clearCache(): Promise<void> {
+    this.tokens = null;
+    this.inflightAuth = null;
+  }
+
+  private async authenticate(): Promise<IolTokenSet> {
     const username = this.config.get<string>('IOL_USERNAME');
     const password = this.config.get<string>('IOL_PASSWORD');
 
@@ -52,32 +85,69 @@ export class IolProvider implements IMarketDataProvider {
       ),
     );
 
-    this.accessToken = data.access_token;
-    this.refreshToken = data.refresh_token;
-    this.tokenExpiresAt = new Date(Date.now() + (data.expires_in - 60) * 1000);
+    return {
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      // Subtract 60s of slack so we re-auth before the server rejects us.
+      expiresAt: new Date(Date.now() + (data.expires_in - 60) * 1000),
+    };
   }
 
-  private async refreshAccessToken(): Promise<void> {
-    if (!this.refreshToken) return this.authenticate();
-
+  private async refreshAccessToken(prev: IolTokenSet): Promise<IolTokenSet> {
     const { data } = await firstValueFrom(
       this.httpService.post(
         `${this.BASE_URL}/token`,
-        `refresh_token=${encodeURIComponent(this.refreshToken)}&grant_type=refresh_token`,
+        `refresh_token=${encodeURIComponent(prev.refreshToken)}&grant_type=refresh_token`,
         { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
       ),
     );
 
-    this.accessToken = data.access_token;
-    this.refreshToken = data.refresh_token;
-    this.tokenExpiresAt = new Date(Date.now() + (data.expires_in - 60) * 1000);
+    return {
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      expiresAt: new Date(Date.now() + (data.expires_in - 60) * 1000),
+    };
   }
 
+  /**
+   * Resolve a valid access token. Concurrent calls share one auth round-trip.
+   * Falls back to a fresh password-grant if the refresh token is rejected.
+   */
   private async getToken(): Promise<string> {
-    if (!this.accessToken || !this.tokenExpiresAt || new Date() >= this.tokenExpiresAt) {
-      await this.refreshAccessToken();
+    // Fast path: cached token still valid
+    if (this.tokens && this.tokens.expiresAt > new Date()) {
+      return this.tokens.accessToken;
     }
-    return this.accessToken!;
+
+    // Single in-flight promise so 5 simultaneous requests cause 1 auth round-trip
+    if (this.inflightAuth) return this.inflightAuth;
+
+    this.inflightAuth = this.fetchToken().finally(() => {
+      this.inflightAuth = null;
+    });
+    return this.inflightAuth;
+  }
+
+  private async fetchToken(): Promise<string> {
+    if (this.tokens) {
+      try {
+        this.tokens = await this.refreshAccessToken(this.tokens);
+        return this.tokens.accessToken;
+      } catch (err) {
+        const status =
+          err instanceof Error && 'response' in err
+            ? (err as { response?: { status?: number } }).response?.status
+            : undefined;
+        this.logger.warn(
+          `IOL refresh failed (status=${status}); falling back to password grant`,
+        );
+        // Refresh failed — likely the refresh token expired server-side.
+        // Clear cache and re-authenticate from scratch.
+        await this.clearCache();
+      }
+    }
+    this.tokens = await this.authenticate();
+    return this.tokens.accessToken;
   }
 
   // ─── Interval mapping ────────────────────────────────────────────
@@ -110,8 +180,11 @@ export class IolProvider implements IMarketDataProvider {
     let token: string;
     try {
       token = await this.getToken();
-    } catch (e: any) {
-      this.logger.warn(`IOL auth failed (${symbol}): ${e.message}. Returning empty data.`);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'unknown';
+      this.logger.warn(
+        `IOL auth failed (${symbol}): ${message}. Returning empty data.`,
+      );
       return [];
     }
     const toDate = to ?? new Date();
@@ -146,8 +219,9 @@ export class IolProvider implements IMarketDataProvider {
     let token: string;
     try {
       token = await this.getToken();
-    } catch (e: any) {
-      this.logger.warn(`IOL auth failed (${symbol}): ${e.message}`);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'unknown';
+      this.logger.warn(`IOL auth failed (${symbol}): ${message}`);
       return 0;
     }
     const { data } = await firstValueFrom(
@@ -188,8 +262,9 @@ export class IolProvider implements IMarketDataProvider {
             if (candles.length > 0) {
               onCandle({ ...candles.at(-1)!, isClosed: false });
             }
-          } catch (e: any) {
-            this.logger.warn(`IOL poll error (${symbol}): ${e.message}`);
+          } catch (e) {
+            const message = e instanceof Error ? e.message : 'unknown';
+            this.logger.warn(`IOL poll error (${symbol}): ${message}`);
           }
         }
         await new Promise((r) => setTimeout(r, 60_000));

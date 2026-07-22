@@ -4,11 +4,24 @@ import {
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePortfolioDto } from './dto/create-portfolio.dto';
 import { UpdatePortfolioDto } from './dto/update-portfolio.dto';
 import { CreateTransactionDto, TransactionType } from './dto/create-transaction.dto';
-import type { Prisma } from '@prisma/client';
+import { PaginationDto, PaginatedResult, paginate } from '../common/dto/pagination.dto';
+
+/**
+ * Shape of a transaction row reduced to the fields updatePosition cares about.
+ * `quantity`/`price`/`total` are Prisma's Decimal class on disk but they
+ * quack like numbers for the arithmetic done here.
+ */
+interface PositionDelta {
+  type: TransactionType;
+  quantity: number;
+  price: number;
+  total: number;
+}
 
 @Injectable()
 export class PortfoliosService {
@@ -74,7 +87,9 @@ export class PortfoliosService {
           orderBy: {
             executedAt: 'desc',
           },
-          take: 50,
+          // Lightweight preview — clients use getTransactions() with
+          // pagination params for the full history.
+          take: 10,
         },
         performanceSnaps: {
           orderBy: {
@@ -146,18 +161,28 @@ export class PortfoliosService {
     });
   }
 
-  async getTransactions(portfolioId: string, userId: string) {
+  async getTransactions(
+    portfolioId: string,
+    userId: string,
+    pagination: PaginationDto,
+  ): Promise<PaginatedResult<unknown>> {
     await this.findOne(portfolioId, userId);
 
-    return this.prisma.transaction.findMany({
-      where: { portfolioId },
-      include: {
-        symbol: true,
-      },
-      orderBy: {
-        executedAt: 'desc',
-      },
-    });
+    const page = pagination.page ?? 1;
+    const limit = pagination.limit ?? 20;
+
+    const [data, total] = await Promise.all([
+      this.prisma.transaction.findMany({
+        where: { portfolioId },
+        include: { symbol: true },
+        orderBy: { executedAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.transaction.count({ where: { portfolioId } }),
+    ]);
+
+    return paginate(data, total, page, limit);
   }
 
   async createTransaction(
@@ -211,9 +236,9 @@ export class PortfoliosService {
         createTransactionDto.symbolId,
         {
           type: transaction.type as TransactionType,
-          quantity: transaction.quantity,
-          price: transaction.price,
-          total: transaction.total,
+          quantity: Number(transaction.quantity),
+          price: Number(transaction.price),
+          total: Number(transaction.total),
         },
       );
 
@@ -225,12 +250,7 @@ export class PortfoliosService {
     tx: Prisma.TransactionClient,
     portfolioId: string,
     symbolId: string,
-    transaction: {
-      type: TransactionType;
-      quantity: Prisma.Decimal | number;
-      price: Prisma.Decimal | number;
-      total: Prisma.Decimal | number;
-    },
+    transaction: PositionDelta,
   ) {
     const existingPosition = await tx.position.findUnique({
       where: { portfolioId_symbolId: { portfolioId, symbolId } },

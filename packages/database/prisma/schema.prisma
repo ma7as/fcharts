@@ -10,22 +10,73 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ── Enums ──────────────────────────────────────────────────────────────
+// Defined once at the schema level so DB-level CHECK constraints enforce
+// valid values. Adding a new value requires a migration; the type is then
+// `SymbolType` (the enum) instead of `String`, with autocomplete in TS.
+
+/// Asset class / kind of instrument.
+enum SymbolType {
+  crypto
+  stock
+  cedear
+  cedear_underlying
+  etf
+  bond
+  index
+}
+
+/// ISO 4217 currency codes used by the app.
+enum Currency {
+  USD
+  ARS
+  USDT
+}
+
+/// Trading venue / exchange identifier.
+enum Market {
+  BYMA
+  NASDAQ
+  NYSE
+  BINANCE
+  GLOBAL
+}
+
+/// Backend provider that supplies price history for the symbol.
+enum DataSource {
+  binance
+  yahoo
+  alphavantage
+  finnhub
+  iol
+}
+
+/// Transaction kind for portfolio activity.
+enum TransactionType {
+  BUY
+  SELL
+  DIVIDEND
+  SPLIT
+  TRANSFER_IN
+  TRANSFER_OUT
+}
+
 // Market data models
 model Symbol {
-  id               String   @id @default(cuid())
-  symbol           String   @unique // e.g., "BTCUSDT", "AAPL", "GGAL", "AAPL.BA"
-  name             String   // e.g., "Bitcoin", "Apple Inc", "Grupo Financiero Galicia"
-  exchange         String   // e.g., "Binance", "NYSE", "NASDAQ", "BYMA"
-  type             String   // "crypto" | "stock" | "cedear" | "cedear_underlying" | "etf" | "bond" | "index"
-  sector           String?  // For stocks: "Technology", "Finance", etc.
-  currency         String   @default("USD") // "USD" | "ARS" | "USDT"
-  market           String   @default("GLOBAL") // "BYMA" | "NASDAQ" | "NYSE" | "Binance" | "GLOBAL"
-  dataSource       String   @default("binance") // "binance" | "yahoo" | "alphavantage" | "finnhub" | "iol"
-  underlyingSymbol String?  // Solo CEDEARs: ticker del subyacente en USD, ej: "AAPL"
-  cedearRatio      Float?   // Solo CEDEARs: ratio de conversión, ej: 10.0
-  isActive         Boolean  @default(true)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id               String       @id @default(cuid())
+  symbol           String       @unique // e.g., "BTCUSDT", "AAPL", "GGAL", "AAPL.BA"
+  name             String       // e.g., "Bitcoin", "Apple Inc", "Grupo Financiero Galicia"
+  exchange         String       // e.g., "Binance", "NYSE", "NASDAQ", "BYMA"
+  type             SymbolType
+  sector           String?      // For stocks: "Technology", "Finance", etc.
+  currency         Currency     @default(USD)
+  market           Market       @default(GLOBAL)
+  dataSource       DataSource   @default(binance)
+  underlyingSymbol String?      // Solo CEDEARs: ticker del subyacente en USD, ej: "AAPL"
+  cedearRatio      Float?       // Solo CEDEARs: ratio de conversión, ej: 10.0
+  isActive         Boolean      @default(true)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
 
   candles       Candle[]
   watchlists    WatchlistItem[]
@@ -132,15 +183,15 @@ model WatchlistItem {
 }
 // Portfolio & Investment models
 model Portfolio {
-  id          String   @id @default(cuid())
+  id          String       @id @default(cuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   name        String
   description String?
-  currency    String   @default("USD") // Base currency for portfolio
-  isDefault   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  currency    Currency     @default(USD)
+  isDefault   Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   positions        Position[]
   transactions     Transaction[]
@@ -180,7 +231,7 @@ model Transaction {
   symbolId        String
   symbol          Symbol    @relation(fields: [symbolId], references: [id], onDelete: Restrict)
   
-  type            String    // "BUY", "SELL", "DIVIDEND", "SPLIT", "TRANSFER_IN", "TRANSFER_OUT"
+  type            TransactionType
   quantity        Decimal   @db.Decimal(20, 8)
   price           Decimal   @db.Decimal(20, 8)
   fees            Decimal   @default(0) @db.Decimal(20, 2)

@@ -1,5 +1,5 @@
-﻿import { PrismaClient } from '@prisma/client';
-import dotenv from 'dotenv';
+﻿import { PrismaClient, SymbolType, Currency, Market, DataSource } from '@prisma/client';
+import * as dotenv from 'dotenv';
 import { resolve } from 'path';
 
 // Load environment variables from root
@@ -18,31 +18,31 @@ async function main() {
 
   // ─── Cryptocurrencies (Binance) ──────────────────────────────────────────
   const cryptos = await Promise.all([
-    upsert('BTCUSDT',  'Bitcoin',        'Binance', 'crypto',  'USD',   'Binance', 'binance'),
-    upsert('ETHUSDT',  'Ethereum',       'Binance', 'crypto',  'USD',   'Binance', 'binance'),
-    upsert('BNBUSDT',  'Binance Coin',   'Binance', 'crypto',  'USD',   'Binance', 'binance'),
-    upsert('SOLUSDT',  'Solana',         'Binance', 'crypto',  'USD',   'Binance', 'binance'),
+    upsert('BTCUSDT',  'Bitcoin',        'Binance', SymbolType.crypto,  Currency.USD,   Market.BINANCE, DataSource.binance),
+    upsert('ETHUSDT',  'Ethereum',       'Binance', SymbolType.crypto,  Currency.USD,   Market.BINANCE, DataSource.binance),
+    upsert('BNBUSDT',  'Binance Coin',   'Binance', SymbolType.crypto,  Currency.USD,   Market.BINANCE, DataSource.binance),
+    upsert('SOLUSDT',  'Solana',         'Binance', SymbolType.crypto,  Currency.USD,   Market.BINANCE, DataSource.binance),
   ]);
   console.log(`✅ ${cryptos.length} crypto symbols`);
 
   // ─── CEDEAR Subyacentes — cotización en USD (NYSE / NASDAQ) ─────────────
   // type: "cedear_underlying" | dataSource: "finnhub"
   const underlyings = await Promise.all([
-    upsert('AAPL',  'Apple Inc.',             'NASDAQ',   'cedear_underlying', 'USD', 'NASDAQ',   'finnhub', 'Technology'),
-    upsert('MSFT',  'Microsoft Corporation',  'NASDAQ',   'cedear_underlying', 'USD', 'NASDAQ',   'finnhub', 'Technology'),
-    upsert('AMZN',  'Amazon.com Inc.',        'NASDAQ',   'cedear_underlying', 'USD', 'NASDAQ',   'finnhub', 'Consumer Technology'),
-    upsert('GOOGL', 'Alphabet Inc.',          'NASDAQ',   'cedear_underlying', 'USD', 'NASDAQ',   'finnhub', 'Technology'),
-    upsert('TSLA',  'Tesla Inc.',             'NASDAQ',   'cedear_underlying', 'USD', 'NASDAQ',   'finnhub', 'Automotive'),
-    upsert('NVDA',  'NVIDIA Corporation',     'NASDAQ',   'cedear_underlying', 'USD', 'NASDAQ',   'finnhub', 'Semiconductors'),
-    upsert('META',  'Meta Platforms Inc.',    'NASDAQ',   'cedear_underlying', 'USD', 'NASDAQ',   'finnhub', 'Technology'),
-    upsert('MELI',  'MercadoLibre Inc.',      'NASDAQ',   'cedear_underlying', 'USD', 'NASDAQ',   'finnhub', 'E-Commerce'),
-    upsert('BABA',  'Alibaba Group',          'NYSE',     'cedear_underlying', 'USD', 'NYSE',     'finnhub', 'E-Commerce'),
-    upsert('WMT',   'Walmart Inc.',           'NYSE',     'cedear_underlying', 'USD', 'NYSE',     'finnhub', 'Consumer Staples'),
-    upsert('XOM',   'ExxonMobil Corp.',       'NYSE',     'cedear_underlying', 'USD', 'NYSE',     'finnhub', 'Energy'),
-    upsert('KO',    'Coca-Cola Company',      'NYSE',     'cedear_underlying', 'USD', 'NYSE',     'finnhub', 'Consumer Staples'),
-    upsert('SPY',   'SPDR S&P 500 ETF',       'NYSE Arca','cedear_underlying', 'USD', 'NYSE',     'finnhub', 'Index Fund'),
-    upsert('QQQ',   'Invesco QQQ (Nasdaq 100)','NASDAQ',  'cedear_underlying', 'USD', 'NASDAQ',   'finnhub', 'Index Fund'),
-    upsert('GLD',   'SPDR Gold Shares',       'NYSE Arca','cedear_underlying', 'USD', 'NYSE',     'finnhub', 'Commodities'),
+    upsert('AAPL',  'Apple Inc.',             'NASDAQ',   SymbolType.cedear_underlying, Currency.USD, Market.NASDAQ,   DataSource.finnhub, 'Technology'),
+    upsert('MSFT',  'Microsoft Corporation',  'NASDAQ',   SymbolType.cedear_underlying, Currency.USD, Market.NASDAQ,   DataSource.finnhub, 'Technology'),
+    upsert('AMZN',  'Amazon.com Inc.',        'NASDAQ',   SymbolType.cedear_underlying, Currency.USD, Market.NASDAQ,   DataSource.finnhub, 'Consumer Technology'),
+    upsert('GOOGL', 'Alphabet Inc.',          'NASDAQ',   SymbolType.cedear_underlying, Currency.USD, Market.NASDAQ,   DataSource.finnhub, 'Technology'),
+    upsert('TSLA',  'Tesla Inc.',             'NASDAQ',   SymbolType.cedear_underlying, Currency.USD, Market.NASDAQ,   DataSource.finnhub, 'Automotive'),
+    upsert('NVDA',  'NVIDIA Corporation',     'NASDAQ',   SymbolType.cedear_underlying, Currency.USD, Market.NASDAQ,   DataSource.finnhub, 'Semiconductors'),
+    upsert('META',  'Meta Platforms Inc.',    'NASDAQ',   SymbolType.cedear_underlying, Currency.USD, Market.NASDAQ,   DataSource.finnhub, 'Technology'),
+    upsert('MELI',  'MercadoLibre Inc.',      'NASDAQ',   SymbolType.cedear_underlying, Currency.USD, Market.NASDAQ,   DataSource.finnhub, 'E-Commerce'),
+    upsert('BABA',  'Alibaba Group',          'NYSE',     SymbolType.cedear_underlying, Currency.USD, Market.NYSE,     DataSource.finnhub, 'E-Commerce'),
+    upsert('WMT',   'Walmart Inc.',           'NYSE',     SymbolType.cedear_underlying, Currency.USD, Market.NYSE,     DataSource.finnhub, 'Consumer Staples'),
+    upsert('XOM',   'ExxonMobil Corp.',       'NYSE',     SymbolType.cedear_underlying, Currency.USD, Market.NYSE,     DataSource.finnhub, 'Energy'),
+    upsert('KO',    'Coca-Cola Company',      'NYSE',     SymbolType.cedear_underlying, Currency.USD, Market.NYSE,     DataSource.finnhub, 'Consumer Staples'),
+    upsert('SPY',   'SPDR S&P 500 ETF',       'NYSE Arca',SymbolType.cedear_underlying, Currency.USD, Market.NYSE,     DataSource.finnhub, 'Index Fund'),
+    upsert('QQQ',   'Invesco QQQ (Nasdaq 100)','NASDAQ',  SymbolType.cedear_underlying, Currency.USD, Market.NASDAQ,   DataSource.finnhub, 'Index Fund'),
+    upsert('GLD',   'SPDR Gold Shares',       'NYSE Arca',SymbolType.cedear_underlying, Currency.USD, Market.NYSE,     DataSource.finnhub, 'Commodities'),
   ]);
   console.log(`✅ ${underlyings.length} CEDEAR underlying symbols (USD)`);
 
@@ -50,21 +50,21 @@ async function main() {
   // type: "cedear" | dataSource: "iol" | currency: "ARS"
   // Ratio: cuántos CEDEARs equivalen a 1 acción del subyacente
   const cedears = await Promise.all([
-    upsertCedear('AAPL',  'Apple Inc. (CEDEAR)',             'BYMA', 'ARS', 'AAPL',  10, 'Technology'),
-    upsertCedear('MSFT',  'Microsoft Corp. (CEDEAR)',        'BYMA', 'ARS', 'MSFT',  10, 'Technology'),
-    upsertCedear('AMZN',  'Amazon.com Inc. (CEDEAR)',        'BYMA', 'ARS', 'AMZN',   9, 'Consumer Technology'),
-    upsertCedear('GOOGL', 'Alphabet Inc. (CEDEAR)',          'BYMA', 'ARS', 'GOOGL', 33, 'Technology'),
-    upsertCedear('TSLA',  'Tesla Inc. (CEDEAR)',             'BYMA', 'ARS', 'TSLA',  10, 'Automotive'),
-    upsertCedear('NVDA',  'NVIDIA Corp. (CEDEAR)',           'BYMA', 'ARS', 'NVDA',  10, 'Semiconductors'),
-    upsertCedear('META',  'Meta Platforms (CEDEAR)',         'BYMA', 'ARS', 'META',  12, 'Technology'),
-    upsertCedear('MELI',  'MercadoLibre (CEDEAR)',           'BYMA', 'ARS', 'MELI',   1, 'E-Commerce'),
-    upsertCedear('BABA',  'Alibaba Group (CEDEAR)',          'BYMA', 'ARS', 'BABA',   4, 'E-Commerce'),
-    upsertCedear('WMT',   'Walmart Inc. (CEDEAR)',           'BYMA', 'ARS', 'WMT',   10, 'Consumer Staples'),
-    upsertCedear('XOM',   'ExxonMobil (CEDEAR)',             'BYMA', 'ARS', 'XOM',   10, 'Energy'),
-    upsertCedear('KO',    'Coca-Cola (CEDEAR)',              'BYMA', 'ARS', 'KO',    10, 'Consumer Staples'),
-    upsertCedear('SPY',   'SPDR S&P 500 ETF (CEDEAR)',       'BYMA', 'ARS', 'SPY',   10, 'Index Fund'),
-    upsertCedear('QQQ',   'Invesco QQQ ETF (CEDEAR)',        'BYMA', 'ARS', 'QQQ',   10, 'Index Fund'),
-    upsertCedear('GLD',   'SPDR Gold Shares (CEDEAR)',       'BYMA', 'ARS', 'GLD',   10, 'Commodities'),
+    upsertCedear('AAPL',  'Apple Inc. (CEDEAR)',             'BYMA', Currency.ARS, 'AAPL',  10, 'Technology'),
+    upsertCedear('MSFT',  'Microsoft Corp. (CEDEAR)',        'BYMA', Currency.ARS, 'MSFT',  10, 'Technology'),
+    upsertCedear('AMZN',  'Amazon.com Inc. (CEDEAR)',        'BYMA', Currency.ARS, 'AMZN',   9, 'Consumer Technology'),
+    upsertCedear('GOOGL', 'Alphabet Inc. (CEDEAR)',          'BYMA', Currency.ARS, 'GOOGL', 33, 'Technology'),
+    upsertCedear('TSLA',  'Tesla Inc. (CEDEAR)',             'BYMA', Currency.ARS, 'TSLA',  10, 'Automotive'),
+    upsertCedear('NVDA',  'NVIDIA Corp. (CEDEAR)',           'BYMA', Currency.ARS, 'NVDA',  10, 'Semiconductors'),
+    upsertCedear('META',  'Meta Platforms (CEDEAR)',         'BYMA', Currency.ARS, 'META',  12, 'Technology'),
+    upsertCedear('MELI',  'MercadoLibre (CEDEAR)',           'BYMA', Currency.ARS, 'MELI',   1, 'E-Commerce'),
+    upsertCedear('BABA',  'Alibaba Group (CEDEAR)',          'BYMA', Currency.ARS, 'BABA',   4, 'E-Commerce'),
+    upsertCedear('WMT',   'Walmart Inc. (CEDEAR)',           'BYMA', Currency.ARS, 'WMT',   10, 'Consumer Staples'),
+    upsertCedear('XOM',   'ExxonMobil (CEDEAR)',             'BYMA', Currency.ARS, 'XOM',   10, 'Energy'),
+    upsertCedear('KO',    'Coca-Cola (CEDEAR)',              'BYMA', Currency.ARS, 'KO',    10, 'Consumer Staples'),
+    upsertCedear('SPY',   'SPDR S&P 500 ETF (CEDEAR)',       'BYMA', Currency.ARS, 'SPY',   10, 'Index Fund'),
+    upsertCedear('QQQ',   'Invesco QQQ ETF (CEDEAR)',        'BYMA', Currency.ARS, 'QQQ',   10, 'Index Fund'),
+    upsertCedear('GLD',   'SPDR Gold Shares (CEDEAR)',       'BYMA', Currency.ARS, 'GLD',   10, 'Commodities'),
   ]);
   // Note: CEDEARs must use a distinct symbol key from their USD underlying.
   // Convention used: append 'D' suffix (BYMA uses this for lote D, e.g. "AAPLD").
@@ -74,16 +74,16 @@ async function main() {
   // ─── Acciones Argentinas (MERVAL / Panel Líder BYMA) ────────────────────
   // type: "stock" | dataSource: "yahoo" (sufijo .BA) | currency: "ARS"
   const arStocks = await Promise.all([
-    upsert('GGAL.BA',  'Grupo Financiero Galicia',       'BYMA', 'stock', 'ARS', 'BYMA', 'yahoo', 'Financiero'),
-    upsert('YPF.BA',   'YPF S.A.',                       'BYMA', 'stock', 'ARS', 'BYMA', 'yahoo', 'Energía'),
-    upsert('PAMP.BA',  'Pampa Energía S.A.',             'BYMA', 'stock', 'ARS', 'BYMA', 'yahoo', 'Energía'),
-    upsert('TXAR.BA',  'Ternium Argentina S.A.',         'BYMA', 'stock', 'ARS', 'BYMA', 'yahoo', 'Industriales'),
-    upsert('ALUA.BA',  'Aluar Aluminio Argentino',       'BYMA', 'stock', 'ARS', 'BYMA', 'yahoo', 'Materiales'),
-    upsert('BBAR.BA',  'BBVA Argentina S.A.',            'BYMA', 'stock', 'ARS', 'BYMA', 'yahoo', 'Financiero'),
-    upsert('COME.BA',  'Soc. Comercial del Plata S.A.',  'BYMA', 'stock', 'ARS', 'BYMA', 'yahoo', 'Diversificado'),
-    upsert('CRES.BA',  'Cresud S.A.C.I.F. y A.',        'BYMA', 'stock', 'ARS', 'BYMA', 'yahoo', 'Agropecuario'),
-    upsert('VALO.BA',  'Grupo Supervielle S.A.',         'BYMA', 'stock', 'ARS', 'BYMA', 'yahoo', 'Financiero'),
-    upsert('MIRG.BA',  'Mirgor S.A.I.C.I.F.',           'BYMA', 'stock', 'ARS', 'BYMA', 'yahoo', 'Tecnología'),
+    upsert('GGAL.BA',  'Grupo Financiero Galicia',       'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Financiero'),
+    upsert('YPF.BA',   'YPF S.A.',                       'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Energía'),
+    upsert('PAMP.BA',  'Pampa Energía S.A.',             'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Energía'),
+    upsert('TXAR.BA',  'Ternium Argentina S.A.',         'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Industriales'),
+    upsert('ALUA.BA',  'Aluar Aluminio Argentino',       'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Materiales'),
+    upsert('BBAR.BA',  'BBVA Argentina S.A.',            'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Financiero'),
+    upsert('COME.BA',  'Soc. Comercial del Plata S.A.',  'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Diversificado'),
+    upsert('CRES.BA',  'Cresud S.A.C.I.F. y A.',        'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Agropecuario'),
+    upsert('VALO.BA',  'Grupo Supervielle S.A.',         'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Financiero'),
+    upsert('MIRG.BA',  'Mirgor S.A.I.C.I.F.',           'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Tecnología'),
   ]);
   console.log(`✅ ${arStocks.length} Argentine stock symbols (ARS)`);
 
@@ -137,7 +137,7 @@ async function main() {
       userId: user.id,
       name: 'Main Portfolio',
       description: 'Portfolio principal',
-      currency: 'USD',
+      currency: Currency.USD,
       isDefault: true,
     },
   });
@@ -152,10 +152,10 @@ function upsert(
   symbol: string,
   name: string,
   exchange: string,
-  type: string,
-  currency: string,
-  market: string,
-  dataSource: string,
+  type: SymbolType,
+  currency: Currency,
+  market: Market,
+  dataSource: DataSource,
   sector?: string,
 ) {
   return prisma.symbol.upsert({
@@ -169,7 +169,7 @@ function upsertCedear(
   baseSymbol: string,
   name: string,
   exchange: string,
-  currency: string,
+  currency: Currency,
   underlyingSymbol: string,
   cedearRatio: number,
   sector?: string,
@@ -183,10 +183,10 @@ function upsertCedear(
       symbol,
       name,
       exchange,
-      type: 'cedear',
+      type: SymbolType.cedear,
       currency,
-      market: 'BYMA',
-      dataSource: 'iol',
+      market: Market.BYMA,
+      dataSource: DataSource.iol,
       underlyingSymbol,
       cedearRatio,
       sector,

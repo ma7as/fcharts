@@ -37,14 +37,39 @@ async function bootstrap() {
   if (process.env.NODE_ENV !== 'production') {
     const config = new DocumentBuilder()
       .setTitle('Financial Charts API')
-      .setDescription('API for financial charts with real-time data')
-      .setVersion('1.0')
-      .addTag('market')
-      .addTag('symbols')
+      .setDescription(
+        'API for the fcharts financial dashboard.\n\n' +
+          '**Auth:** Most endpoints require an httpOnly cookie session set by ' +
+          'POST /auth/login. Bearer tokens are also accepted for non-browser ' +
+          'clients. The `Try it out` button in this UI sends credentials.\n\n' +
+          '**Rate limits:** Auth endpoints are throttled (see per-endpoint docs).',
+      )
+      .setVersion('1.0.0')
+      .addTag('auth', 'Registration, login, refresh, logout, profile')
+      .addTag('symbols', 'Trading symbols catalog (paginated)')
+      .addTag('market', 'OHLC, indicators and CCL calculations')
+      .addTag('portfolios', 'User portfolios, positions, transactions, performance')
+      .addTag('users', 'User CRUD (admin)')
+      .addBearerAuth(
+        { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+        'bearerAuth',
+      )
+      .addCookieAuth(
+        'fc_access_token',
+        { type: 'apiKey', in: 'cookie', name: 'fc_access_token' },
+      )
       .build();
 
     const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('api/docs', app, document);
+    SwaggerModule.setup('api/docs', app, document, {
+      swaggerOptions: {
+        // Keep credentials so the cookie auth works in the browser.
+        persistAuthorization: true,
+        // Try it out is collapsed by default to keep the UI clean.
+        docExpansion: 'none',
+        defaultModelsExpandDepth: -1,
+      },
+    });
   }
 
   const port = process.env.PORT || 8101;

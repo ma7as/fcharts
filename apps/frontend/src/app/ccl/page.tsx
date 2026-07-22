@@ -23,13 +23,14 @@ export default function CclPage() {
   const { t } = useLocale();
   const [cedear, setCedear] = useState('GGAL');
 
-  // Load all symbols to populate the CEDEAR selector
-  const { data: symbols } = useQuery({
-    queryKey: ['symbols'],
-    queryFn: symbolsApi.getAll,
+  // Load only CEDEARs from the backend (server-side type filter).
+  // limit=100 covers the entire catalog at the moment.
+  const { data: cedearsPage } = useQuery({
+    queryKey: ['symbols', { type: 'cedear', limit: 100 }],
+    queryFn: () => symbolsApi.getAll({ type: 'cedear', limit: 100 }),
   });
 
-  const cedears = (symbols as any[] | undefined)?.filter((s) => s.type === 'cedear') ?? [];
+  const cedears = cedearsPage?.data ?? [];
 
   // Load CCL series for selected CEDEAR
   const { data: cclData, isLoading } = useQuery({

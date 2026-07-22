@@ -103,5 +103,13 @@ export const en = {
   symbolSelector: {
     viewInUsd: 'View in USD ({{symbol}})',
     viewInArs: 'View in ARS ({{symbol}})',
+    filterByType: 'Filter by type',
+    allTypes: 'All types',
+  },
+  pagination: {
+    showing: 'Showing {{from}}-{{to}} of {{total}}',
+    page: 'Page {{page}}',
+    prev: 'Previous',
+    next: 'Next',
   },
 };

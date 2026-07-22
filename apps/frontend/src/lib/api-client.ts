@@ -109,9 +109,26 @@ export const marketApi = {
 };
 
 // ── Symbols API ────────────────────────────────────────────────────
+export interface PaginatedSymbols {
+  data: any[];
+  total: number;
+  page: number;
+  limit: number;
+  hasMore: boolean;
+}
+
 export const symbolsApi = {
-  getAll: async () => {
-    const { data } = await apiClient.get('/api/v1/symbols');
+  /**
+   * List symbols with optional pagination, type filter and search.
+   * Returns the full PaginatedSymbols envelope from the backend.
+   */
+  getAll: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    type?: string;
+  }): Promise<PaginatedSymbols> => {
+    const { data } = await apiClient.get('/api/v1/symbols', { params });
     return data;
   },
 
@@ -153,8 +170,14 @@ export const portfoliosApi = {
     return data;
   },
 
-  getTransactions: async (id: string) => {
-    const { data } = await apiClient.get(`/api/v1/portfolios/${id}/transactions`);
+  getTransactions: async (
+    id: string,
+    pagination?: { page?: number; limit?: number },
+  ) => {
+    const { data } = await apiClient.get(
+      `/api/v1/portfolios/${id}/transactions`,
+      { params: pagination },
+    );
     return data;
   },
 

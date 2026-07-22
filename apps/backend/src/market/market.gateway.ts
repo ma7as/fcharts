@@ -4,9 +4,10 @@ import {
   SubscribeMessage,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  OnGatewayInit,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Logger, UnauthorizedException } from '@nestjs/common';
+import { Logger, UnauthorizedException, OnModuleDestroy } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { MarketDataRegistry } from './providers/market-data-registry.service';
@@ -38,7 +39,8 @@ function parseCookieHeader(
   cors: { origin: process.env.CORS_ORIGIN ?? 'http://localhost:8100' },
   namespace: '/market',
 })
-export class MarketGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class MarketGateway
+  implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, OnModuleDestroy {
   @WebSocketServer()
   server!: Server;
 
@@ -135,5 +137,34 @@ export class MarketGateway implements OnGatewayConnection, OnGatewayDisconnect {
       unsub();
       this.subs.delete(clientId);
     }
+  }
+
+  /**
+   * Tear down every active subscription on shutdown. Without this, the
+   * provider polling loops (which run as `while(active) await setTimeout`)
+   * keep spinning until the next tick. Calling their unsubscribe handler
+   * flips `active = false` and the loops exit cleanly.
+   */
+  onModuleDestroy(): void {
+    for (const [clientId, unsub] of this.subs) {
+      try {
+        unsub();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'unknown';
+        this.logger.warn(
+          `Error unsubscribing client ${clientId} on shutdown: ${message}`,
+        );
+      }
+    }
+    this.subs.clear();
+    this.logger.log(`Market gateway shut down; cleared ${this.subs.size} subs`);
+  }
+
+  onGatewayInit(): void {
+    this.logger.log('Market gateway initialised');
+  }
+
+  afterInit(server: Server): void {
+    this.logger.log(`Market gateway bound to socket.io server`);
   }
 }

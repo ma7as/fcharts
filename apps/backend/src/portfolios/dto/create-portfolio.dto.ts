@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional, IsBoolean } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsEnum } from 'class-validator';
+import { Currency } from '@prisma/client';
 
 export class CreatePortfolioDto {
   @ApiProperty({ example: 'Main Portfolio' })
@@ -11,10 +12,15 @@ export class CreatePortfolioDto {
   @IsString()
   description?: string;
 
-  @ApiProperty({ example: 'USD', default: 'USD' })
+  @ApiProperty({
+    example: 'USD',
+    enum: Currency,
+    default: Currency.USD,
+    required: false,
+  })
   @IsOptional()
-  @IsString()
-  currency?: string;
+  @IsEnum(Currency)
+  currency?: Currency;
 
   @ApiProperty({ example: false, default: false })
   @IsOptional()

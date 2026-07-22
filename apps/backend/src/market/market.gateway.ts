@@ -4,19 +4,28 @@ import {
   SubscribeMessage,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  ConnectedSocket,
+  MessageBody,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Logger } from '@nestjs/common';
+import { Logger, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { MarketDataRegistry } from './providers/market-data-registry.service';
 
+interface JwtPayload {
+  sub: string;
+  username: string;
+  email: string;
+}
+
 @WebSocketGateway({
-  cors: { origin: '*' },
+  cors: { origin: process.env.CORS_ORIGIN ?? 'http://localhost:8100' },
   namespace: '/market',
 })
 export class MarketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
-  server: Server;
+  server!: Server;
 
   private readonly logger = new Logger(MarketGateway.name);
 
@@ -26,10 +35,41 @@ export class MarketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private readonly prisma: PrismaService,
     private readonly registry: MarketDataRegistry,
+    private readonly jwtService: JwtService,
   ) {}
 
-  handleConnection(client: Socket) {
-    this.logger.log(`Client connected: ${client.id}`);
+  /**
+   * Validate the JWT in the `auth.token` handshake field. Reject the
+   * connection immediately if invalid — anonymous clients must not be
+   * able to open upstream provider streams or exhaust quotas.
+   */
+  async handleConnection(client: Socket): Promise<void> {
+    try {
+      const token =
+        (client.handshake.auth?.token as string | undefined) ??
+        (client.handshake.headers['authorization'] as string | undefined)?.replace(
+          /^Bearer\s+/i,
+          '',
+        );
+
+      if (!token) {
+        throw new UnauthorizedException('Missing auth token');
+      }
+
+      const payload = await this.jwtService.verifyAsync<JwtPayload>(token);
+      // Attach user info for downstream handlers
+      (client.data as { userId?: string; username?: string }).userId = payload.sub;
+      (client.data as { userId?: string; username?: string }).username =
+        payload.username;
+
+      this.logger.log(`Client connected: ${client.id} (user ${payload.sub})`);
+    } catch (err) {
+      const reason =
+        err instanceof Error ? err.message : 'Invalid authentication token';
+      this.logger.warn(`Rejecting WS client ${client.id}: ${reason}`);
+      client.emit('error', { message: 'Unauthorized' });
+      client.disconnect(true);
+    }
   }
 
   handleDisconnect(client: Socket) {

@@ -1,4 +1,9 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+  Logger,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -6,6 +11,8 @@ import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(private prisma: PrismaService) {}
 
   async create(createUserDto: CreateUserDto) {
@@ -16,10 +23,16 @@ export class UsersService {
           { username: createUserDto.username },
         ],
       },
+      select: { id: true },
     });
 
     if (existingUser) {
-      throw new ConflictException('Email or username already exists');
+      // Don't leak which field collided — that's user enumeration.
+      // Log the detail server-side for debugging.
+      this.logger.warn(
+        `Registration conflict for email=${createUserDto.email} username=${createUserDto.username}`,
+      );
+      throw new ConflictException('Registration failed');
     }
 
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);

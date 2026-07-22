@@ -1,8 +1,14 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePortfolioDto } from './dto/create-portfolio.dto';
 import { UpdatePortfolioDto } from './dto/update-portfolio.dto';
-import { CreateTransactionDto } from './dto/create-transaction.dto';
+import { CreateTransactionDto, TransactionType } from './dto/create-transaction.dto';
+import type { Prisma } from '@prisma/client';
 
 @Injectable()
 export class PortfoliosService {
@@ -161,50 +167,85 @@ export class PortfoliosService {
   ) {
     await this.findOne(portfolioId, userId);
 
-    const transaction = await this.prisma.transaction.create({
-      data: {
-        ...createTransactionDto,
+    const total =
+      Number(createTransactionDto.quantity) * Number(createTransactionDto.price) +
+      Number(createTransactionDto.fees ?? 0);
+
+    // Pre-flight check for SELL: reject if the user is trying to sell more
+    // than they currently hold. Without this guard, quantity can go negative
+    // (or a position is deleted prematurely when newQuantity === 0).
+    if (createTransactionDto.type === TransactionType.SELL) {
+      const held = await this.prisma.position.findUnique({
+        where: {
+          portfolioId_symbolId: {
+            portfolioId,
+            symbolId: createTransactionDto.symbolId,
+          },
+        },
+        select: { quantity: true },
+      });
+      const heldQty = held ? Number(held.quantity) : 0;
+      if (Number(createTransactionDto.quantity) > heldQty) {
+        throw new BadRequestException(
+          `Cannot sell ${createTransactionDto.quantity} units; only ${heldQty} held`,
+        );
+      }
+    }
+
+    // Both the transaction row and the position mutation must succeed or
+    // fail together — otherwise a crash mid-flight leaves a transaction
+    // row without the matching position update (ledger inconsistency).
+    return this.prisma.$transaction(async (tx) => {
+      const transaction = await tx.transaction.create({
+        data: {
+          ...createTransactionDto,
+          portfolioId,
+          total,
+        },
+        include: { symbol: true },
+      });
+
+      await this.updatePosition(
+        tx,
         portfolioId,
-        total: Number(createTransactionDto.quantity) * Number(createTransactionDto.price) + Number(createTransactionDto.fees || 0),
-      },
-      include: {
-        symbol: true,
-      },
+        createTransactionDto.symbolId,
+        {
+          type: transaction.type as TransactionType,
+          quantity: transaction.quantity,
+          price: transaction.price,
+          total: transaction.total,
+        },
+      );
+
+      return transaction;
     });
-
-    // Update or create position
-    await this.updatePosition(portfolioId, createTransactionDto.symbolId, transaction);
-
-    return transaction;
   }
 
   private async updatePosition(
+    tx: Prisma.TransactionClient,
     portfolioId: string,
     symbolId: string,
-    transaction: any,
+    transaction: {
+      type: TransactionType;
+      quantity: Prisma.Decimal | number;
+      price: Prisma.Decimal | number;
+      total: Prisma.Decimal | number;
+    },
   ) {
-    const existingPosition = await this.prisma.position.findUnique({
-      where: {
-        portfolioId_symbolId: {
-          portfolioId,
-          symbolId,
-        },
-      },
+    const existingPosition = await tx.position.findUnique({
+      where: { portfolioId_symbolId: { portfolioId, symbolId } },
     });
 
-    if (transaction.type === 'BUY') {
+    if (transaction.type === TransactionType.BUY) {
       if (existingPosition) {
-        const newQuantity = Number(existingPosition.quantity) + Number(transaction.quantity);
-        const newCostBasis = Number(existingPosition.costBasis) + Number(transaction.total);
+        const newQuantity =
+          Number(existingPosition.quantity) + Number(transaction.quantity);
+        const newCostBasis =
+          Number(existingPosition.costBasis) + Number(transaction.total);
         const newAveragePrice = newCostBasis / newQuantity;
 
-        await this.prisma.position.update({
-          where: {
-            portfolioId_symbolId: {
-              portfolioId,
-              symbolId,
-            },
-          },
+        await tx.position.update({
+          where: { portfolioId_symbolId: { portfolioId, symbolId } },
           data: {
             quantity: newQuantity,
             averagePrice: newAveragePrice,
@@ -215,7 +256,7 @@ export class PortfoliosService {
           },
         });
       } else {
-        await this.prisma.position.create({
+        await tx.position.create({
           data: {
             portfolioId,
             symbolId,
@@ -227,29 +268,22 @@ export class PortfoliosService {
           },
         });
       }
-    } else if (transaction.type === 'SELL' && existingPosition) {
-      const newQuantity = Number(existingPosition.quantity) - Number(transaction.quantity);
-      
+    } else if (transaction.type === TransactionType.SELL && existingPosition) {
+      const newQuantity =
+        Number(existingPosition.quantity) - Number(transaction.quantity);
+
       if (newQuantity <= 0) {
-        await this.prisma.position.delete({
-          where: {
-            portfolioId_symbolId: {
-              portfolioId,
-              symbolId,
-            },
-          },
+        await tx.position.delete({
+          where: { portfolioId_symbolId: { portfolioId, symbolId } },
         });
       } else {
-        const costReduction = (Number(transaction.quantity) / Number(existingPosition.quantity)) * Number(existingPosition.costBasis);
+        const costReduction =
+          (Number(transaction.quantity) / Number(existingPosition.quantity)) *
+          Number(existingPosition.costBasis);
         const newCostBasis = Number(existingPosition.costBasis) - costReduction;
 
-        await this.prisma.position.update({
-          where: {
-            portfolioId_symbolId: {
-              portfolioId,
-              symbolId,
-            },
-          },
+        await tx.position.update({
+          where: { portfolioId_symbolId: { portfolioId, symbolId } },
           data: {
             quantity: newQuantity,
             costBasis: newCostBasis,

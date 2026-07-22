@@ -74,9 +74,12 @@ export class MarketService {
 
       return this.buildResponse(query, symbolRecord, candles);
     } catch (error) {
-      this.logger.error(`Error fetching market data: ${error.message}`);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Error fetching market data: ${message}`);
+      // Generic message to the client — internal details (upstream error bodies,
+      // network addresses, stack frames) must never reach the response.
       throw new HttpException(
-        `Error fetching market data: ${error.message}`,
+        'Market data is temporarily unavailable',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

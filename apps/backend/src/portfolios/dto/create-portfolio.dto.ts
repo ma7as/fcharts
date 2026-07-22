@@ -4,7 +4,7 @@ import { IsString, IsOptional, IsBoolean } from 'class-validator';
 export class CreatePortfolioDto {
   @ApiProperty({ example: 'Main Portfolio' })
   @IsString()
-  name: string;
+  name!: string;
 
   @ApiProperty({ example: 'My investment portfolio', required: false })
   @IsOptional()

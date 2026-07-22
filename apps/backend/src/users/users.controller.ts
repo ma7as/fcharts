@@ -20,7 +20,12 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create a new user' })
+  // Registration goes through POST /api/v1/auth/register, NOT this endpoint.
+  // Without this guard, any anonymous caller could bypass the registration
+  // flow and create arbitrary accounts directly.
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create a new user (admin only)' })
   create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.create(createUserDto);
   }

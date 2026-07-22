@@ -21,20 +21,23 @@ services:
       timeout: 5s
       retries: 5
 
-  # Redis (opcional, para cache)
-  redis:
-    image: redis:7-alpine
-    container_name: fc-redis
-    restart: unless-stopped
-    ports:
-      - '8103:6379'
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
-      interval: 10s
-      timeout: 3s
-      retries: 5
+  # Redis (currently unused — the backend does not wire CacheModule.
+  # The DB-level candle cache is sufficient for the current load. Uncomment
+  # this block + reintroduce cache-manager deps if/when a real caching layer
+  # is needed.)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: fc-redis
+  #   restart: unless-stopped
+  #   ports:
+  #     - '8103:6379'
+  #   volumes:
+  #     - redis_data:/data
+  #   healthcheck:
+  #     test: ['CMD', 'redis-cli', 'ping']
+  #     interval: 10s
+  #     timeout: 3s
+  #     retries: 5
 
   # Backend - NestJS
   backend:
@@ -46,15 +49,14 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
     environment:
       NODE_ENV: development
       PORT: 8101
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/financial_charts
-      REDIS_URL: redis://redis:6379
-      JWT_SECRET: your-super-secret-jwt-key-change-in-production
-      CORS_ORIGIN: http://localhost:8100
+      # Load JWT_SECRET from the host .env (required: ≥32 chars).
+      # If unset, the backend will refuse to start — see auth.module.ts.
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env. Generate with openssl rand -hex 32}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8100}
       # External data provider API keys (loaded from .env at project root)
       ALPHA_VANTAGE_API_KEY: ${ALPHA_VANTAGE_API_KEY:-}
       FINNHUB_API_KEY: ${FINNHUB_API_KEY:-}
@@ -89,8 +91,8 @@ services:
 volumes:
   postgres_data:
     driver: local
-  redis_data:
-    driver: local
+  # redis_data:
+  #   driver: local
 
 networks:
   default:

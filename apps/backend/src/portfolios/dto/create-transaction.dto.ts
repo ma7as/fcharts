@@ -1,5 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNumber, IsEnum, IsOptional, IsDateString } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsEnum,
+  IsOptional,
+  IsDateString,
+  IsPositive,
+  Min,
+} from 'class-validator';
 
 export enum TransactionType {
   BUY = 'BUY',
@@ -13,23 +21,26 @@ export enum TransactionType {
 export class CreateTransactionDto {
   @ApiProperty({ example: 'clx123abc...' })
   @IsString()
-  symbolId: string;
+  symbolId!: string;
 
   @ApiProperty({ enum: TransactionType, example: TransactionType.BUY })
   @IsEnum(TransactionType)
-  type: TransactionType;
+  type!: TransactionType;
 
-  @ApiProperty({ example: 1.5 })
-  @IsNumber()
-  quantity: number;
+  @ApiProperty({ example: 1.5, description: 'Quantity (must be > 0)' })
+  @IsNumber({ maxDecimalPlaces: 8 })
+  @IsPositive()
+  quantity!: number;
 
-  @ApiProperty({ example: 45000 })
-  @IsNumber()
-  price: number;
+  @ApiProperty({ example: 45000, description: 'Unit price (must be > 0)' })
+  @IsNumber({ maxDecimalPlaces: 8 })
+  @IsPositive()
+  price!: number;
 
   @ApiProperty({ example: 10, required: false, default: 0 })
   @IsOptional()
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 8 })
+  @Min(0)
   fees?: number;
 
   @ApiProperty({ example: 'Bought BTC on dip', required: false })

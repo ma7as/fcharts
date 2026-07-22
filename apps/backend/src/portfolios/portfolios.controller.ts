@@ -14,6 +14,7 @@ import { CreatePortfolioDto } from './dto/create-portfolio.dto';
 import { UpdatePortfolioDto } from './dto/update-portfolio.dto';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RequestWithUser } from '../auth/types/request-with-user';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiTags('portfolios')
@@ -25,19 +26,22 @@ export class PortfoliosController {
 
   @Post()
   @ApiOperation({ summary: 'Create a new portfolio' })
-  create(@Request() req, @Body() createPortfolioDto: CreatePortfolioDto) {
+  create(
+    @Request() req: RequestWithUser,
+    @Body() createPortfolioDto: CreatePortfolioDto,
+  ) {
     return this.portfoliosService.create(req.user.userId, createPortfolioDto);
   }
 
   @Get()
   @ApiOperation({ summary: 'Get all portfolios for current user' })
-  findAll(@Request() req) {
+  findAll(@Request() req: RequestWithUser) {
     return this.portfoliosService.findAllByUser(req.user.userId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get portfolio by ID' })
-  findOne(@Param('id') id: string, @Request() req) {
+  findOne(@Param('id') id: string, @Request() req: RequestWithUser) {
     return this.portfoliosService.findOne(id, req.user.userId);
   }
 
@@ -45,7 +49,7 @@ export class PortfoliosController {
   @ApiOperation({ summary: 'Update portfolio' })
   update(
     @Param('id') id: string,
-    @Request() req,
+    @Request() req: RequestWithUser,
     @Body() updatePortfolioDto: UpdatePortfolioDto,
   ) {
     return this.portfoliosService.update(id, req.user.userId, updatePortfolioDto);
@@ -53,19 +57,19 @@ export class PortfoliosController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete portfolio' })
-  remove(@Param('id') id: string, @Request() req) {
+  remove(@Param('id') id: string, @Request() req: RequestWithUser) {
     return this.portfoliosService.remove(id, req.user.userId);
   }
 
   @Get(':id/positions')
   @ApiOperation({ summary: 'Get all positions in portfolio' })
-  getPositions(@Param('id') id: string, @Request() req) {
+  getPositions(@Param('id') id: string, @Request() req: RequestWithUser) {
     return this.portfoliosService.getPositions(id, req.user.userId);
   }
 
   @Get(':id/transactions')
   @ApiOperation({ summary: 'Get all transactions in portfolio' })
-  getTransactions(@Param('id') id: string, @Request() req) {
+  getTransactions(@Param('id') id: string, @Request() req: RequestWithUser) {
     return this.portfoliosService.getTransactions(id, req.user.userId);
   }
 
@@ -73,7 +77,7 @@ export class PortfoliosController {
   @ApiOperation({ summary: 'Add transaction to portfolio' })
   createTransaction(
     @Param('id') id: string,
-    @Request() req,
+    @Request() req: RequestWithUser,
     @Body() createTransactionDto: CreateTransactionDto,
   ) {
     return this.portfoliosService.createTransaction(
@@ -85,7 +89,7 @@ export class PortfoliosController {
 
   @Get(':id/performance')
   @ApiOperation({ summary: 'Get portfolio performance history' })
-  getPerformance(@Param('id') id: string, @Request() req) {
+  getPerformance(@Param('id') id: string, @Request() req: RequestWithUser) {
     return this.portfoliosService.getPerformance(id, req.user.userId);
   }
 }

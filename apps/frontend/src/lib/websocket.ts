@@ -24,6 +24,16 @@ export class MarketWebSocket {
   private currentInterval: string | null = null;
   private currentCallback: ((data: any) => void) | null = null;
   private reconnectAttempts = 0;
+  /**
+   * Tracks the (symbol, interval) pair we have actually emitted to the
+   * server. The previous implementation re-emitted on every reconnect
+   * because it also kept `currentSymbol` set — which caused the backend
+   * to open a fresh upstream WS into Binance before the previous one had
+   * finished its handshake, surfacing as
+   * "WebSocket was closed before the connection was established".
+   */
+  private pendingSubscription: { symbol: string; interval: string } | null = null;
+  private serverSubscription: { symbol: string; interval: string } | null = null;
 
   constructor() {
     this.socket = io(`${WS_URL}/market`, {
@@ -37,16 +47,21 @@ export class MarketWebSocket {
 
     this.socket.on('connect', () => {
       this.reconnectAttempts = 0;
-      if (this.currentSymbol && this.currentInterval && this.currentCallback) {
-        this.socket.emit('subscribe', {
-          symbol: this.currentSymbol,
-          interval: this.currentInterval,
-        });
-      }
+      // Re-subscribe ONLY if the server thinks we don't have an active
+      // subscription for the symbol we want. If the upstream is still
+      // alive this is a no-op; if the underlying socket was actually
+      // torn down on the server side, the subscription is restored.
+      this.flushPending();
     });
 
     this.socket.on('reconnect_attempt', (attempt: number) => {
       this.reconnectAttempts = attempt;
+    });
+
+    // If the server disconnects, our server-side subscription is gone.
+    // Mark it so the next `connect` re-emits.
+    this.socket.on('disconnect', () => {
+      this.serverSubscription = null;
     });
   }
 
@@ -60,6 +75,8 @@ export class MarketWebSocket {
     this.currentSymbol = null;
     this.currentInterval = null;
     this.currentCallback = null;
+    this.pendingSubscription = null;
+    this.serverSubscription = null;
     if (this.socket.connected) {
       this.socket.disconnect();
     }
@@ -74,17 +91,48 @@ export class MarketWebSocket {
     this.currentInterval = interval;
     this.currentCallback = callback;
 
-    this.socket.emit('subscribe', { symbol, interval });
+    // Replace the candle listener up-front so we never receive a tick
+    // for the previous symbol after the user has switched.
     this.socket.off('candle');
     this.socket.on('candle', callback);
+
+    this.pendingSubscription = { symbol, interval };
+    this.flushPending();
   }
 
   unsubscribe() {
-    this.socket.emit('unsubscribe');
+    if (this.socket.connected) {
+      this.socket.emit('unsubscribe');
+    }
     this.socket.off('candle');
     this.currentSymbol = null;
     this.currentInterval = null;
     this.currentCallback = null;
+    this.pendingSubscription = null;
+    this.serverSubscription = null;
+  }
+
+  /**
+   * Emit `subscribe` only when:
+   *   1. the socket is actually connected, AND
+   *   2. the server hasn't already been notified for this pair.
+   *
+   * This eliminates the race where `subscribe` was emitted before
+   * `connect` (so socket.io buffered it and re-emitted on connect),
+   * producing a duplicate upstream WS into Binance.
+   */
+  private flushPending() {
+    if (!this.socket.connected || !this.pendingSubscription) return;
+    const { symbol, interval } = this.pendingSubscription;
+    if (
+      this.serverSubscription &&
+      this.serverSubscription.symbol === symbol &&
+      this.serverSubscription.interval === interval
+    ) {
+      return;
+    }
+    this.socket.emit('subscribe', { symbol, interval });
+    this.serverSubscription = { symbol, interval };
   }
 
   onConnect(callback: () => void) {

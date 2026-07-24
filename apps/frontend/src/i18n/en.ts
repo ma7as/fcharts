@@ -106,6 +106,13 @@ export const en = {
     filterByType: 'Filter by type',
     allTypes: 'All types',
   },
+  symbolSidebar: {
+    search: 'Search symbol...',
+    empty: 'No symbols match',
+    listLabel: 'Symbol list',
+    keyboardHint: '↑↓ navigate · Enter/Home/End',
+    count: '{{count}} symbols',
+  },
   pagination: {
     showing: 'Showing {{from}}-{{to}} of {{total}}',
     page: 'Page {{page}}',

@@ -5,7 +5,7 @@
 Este proyecto es una aplicación full-stack de gráficos financieros con el siguiente stack:
 
 ### Frontend
-- **Framework**: Next.js 15.3.2 (App Router)
+- **Framework**: Next.js 16.1.6 (App Router)
 - **UI**: React 19, TailwindCSS 4.0, shadcn/ui
 - **Gráficos**: Apache ECharts
 - **Estado**: React Context API
@@ -14,8 +14,8 @@ Este proyecto es una aplicación full-stack de gráficos financieros con el sigu
 
 ### Backend
 - **Framework**: NestJS 11
-- **Base de Datos**: PostgreSQL 16 + Prisma ORM 5.22.0
-- **Caché**: Redis 7
+- **Base de Datos**: PostgreSQL 17 + Prisma ORM 5.22.0
+- **Caché**: Redis 8
 - **WebSockets**: Socket.io para datos en tiempo real
 - **Autenticación**: JWT + bcrypt
 
@@ -334,3 +334,11 @@ El proyecto trabaja con:
 - **Acciones AR**: GGAL, YPF, PAMP (Merval)
 
 Intervalos soportados: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1w, 1M
+
+## Skills de Proyecto
+
+Skills locales en `.github/skills/` que extienden el comportamiento por defecto de Copilot para este repo. Cargarlas cuando el trigger aplique.
+
+| Skill | Trigger | Propósito |
+|---|---|---|
+| `powershell-windows` | `run_in_terminal` en Windows, `.ps1`, PowerShell 5.1/7 | Comandos y scripts PowerShell correctos, sin bashisms, con UTF-8 BOM en scripts. **REGLA CRÍTICA: `.ps1` se guarda UTF-8 CON BOM; el resto del repo va UTF-8 sin BOM.** |

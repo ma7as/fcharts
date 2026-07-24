@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useQuery } from '@tanstack/react-query';
 import { marketApi } from '@/lib/api-client';
@@ -42,6 +42,7 @@ interface Props {
 export function CandlestickChart({ symbol, interval }: Props) {
   const [realtimeCandles, setRealtimeCandles] = useState<CandleData[]>([]);
   const [wsConnected, setWsConnected] = useState(false);
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const wsRef = useRef<MarketWebSocket | null>(null);
 
   // Fetch historical data
@@ -60,6 +61,7 @@ export function CandlestickChart({ symbol, interval }: Props) {
   // Reset realtime candles when symbol/interval changes
   useEffect(() => {
     setRealtimeCandles([]);
+    setHoverIndex(null);
   }, [symbol, interval]);
 
   // Setup WebSocket for real-time updates
@@ -115,6 +117,39 @@ export function CandlestickChart({ symbol, interval }: Props) {
     return merged;
   }, [historicalData, realtimeCandles]);
 
+  // ── Cursor-driven OHLC readout ───────────────────────────────────────
+  // - When the user hovers a candle, hoverIndex points to that row.
+  // - When no hover is active, fall back to the most recent candle.
+  // - All four prices are rounded to 2 decimals via the formatPrice helper.
+  //
+  // These hooks MUST be declared before the early-return below — React's
+  // Rules of Hooks require every render to call the same hooks in the
+  // same order. If `isLoading` is true the previous render skipped these
+  // calls, then the next render executed them, and React blew up.
+  const displayedCandle: CandleData | null = useMemo(() => {
+    if (mergedData.length === 0) return null;
+    const idx =
+      hoverIndex !== null && hoverIndex >= 0 && hoverIndex < mergedData.length
+        ? hoverIndex
+        : mergedData.length - 1;
+    return mergedData[idx];
+  }, [mergedData, hoverIndex]);
+
+  const isLiveCandle =
+    displayedCandle !== null &&
+    realtimeCandles.some((rt) => rt.timestamp === displayedCandle.timestamp);
+
+  const onChartHover = useCallback(
+    (params: { dataIndex?: number } | null) => {
+      if (!params || params.dataIndex === undefined || params.dataIndex < 0) {
+        setHoverIndex(null);
+        return;
+      }
+      setHoverIndex(params.dataIndex);
+    },
+    [],
+  );
+
   if (isLoading) {
     return <div className="h-[600px] flex items-center justify-center bg-gray-900 text-gray-400">Loading...</div>;
   }
@@ -122,6 +157,17 @@ export function CandlestickChart({ symbol, interval }: Props) {
   const dates = mergedData.map((d) => new Date(d.timestamp).toLocaleString());
   const ohlc = mergedData.map((d) => [d.open, d.close, d.low, d.high]);
   const volumes = mergedData.map((d) => d.volume);
+
+  const formatPrice = (n: number | undefined | null): string =>
+    n == null || Number.isNaN(n) ? '—' : n.toFixed(2);
+
+  const formatVolume = (n: number | undefined | null): string => {
+    if (n == null || Number.isNaN(n)) return '—';
+    const abs = Math.abs(n);
+    if (abs >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+    if (abs >= 1_000) return `${(n / 1_000).toFixed(2)}k`;
+    return n.toFixed(2);
+  };
 
   // Build MA series from indicators API
   const maSeries: any[] = [];
@@ -158,27 +204,13 @@ export function CandlestickChart({ symbol, interval }: Props) {
       top: 30,
       textStyle: { color: '#9ca3af', fontSize: 11 },
     },
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: {
-        type: 'cross',
-        lineStyle: { color: '#4b5563' },
-        crossStyle: { color: '#4b5563' },
-      },
-      backgroundColor: '#1f2937',
-      borderColor: '#374151',
-      textStyle: { color: '#e5e7eb' },
-      formatter: (params: any) => {
-        const candle = params[0]?.data;
-        if (!candle) return '';
-        return `
-          <strong>${params[0].name}</strong><br/>
-          Open: ${candle[0]}<br/>
-          Close: ${candle[1]}<br/>
-          Low: ${candle[2]}<br/>
-          High: ${candle[3]}
-        `;
-      },
+    // Tooltip is intentionally disabled. We surface OHLC through the
+    // header bar above the chart, formatted to 2 decimals, updating on
+    // cursor hover via the `updateAxisPointer` handler wired below.
+    tooltip: { show: false },
+    axisPointer: {
+      link: [{ xAxisIndex: 'all' }],
+      label: { backgroundColor: '#374151' },
     },
     grid: [
       {
@@ -327,11 +359,46 @@ export function CandlestickChart({ symbol, interval }: Props) {
         </span>
       </div>
 
+      {/* Live OHLC readout — hover-aware, formatted to 2 decimals.
+          Falls back to the most recent candle when the cursor is off-chart. */}
+      {displayedCandle && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3 px-1 text-xs font-mono">
+          <span className="text-gray-500">
+            {hoverIndex === null ? '(last)' : `(${hoverIndex + 1}/${mergedData.length})`}
+            {isLiveCandle && (
+              <span className="ml-2 px-1.5 py-0.5 rounded bg-green-500/20 text-green-300 border border-green-700">
+                live
+              </span>
+            )}
+          </span>
+          <span className="text-gray-400">
+            O <span className="text-white">{formatPrice(displayedCandle.open)}</span>
+          </span>
+          <span className="text-gray-400">
+            H <span className="text-emerald-300">{formatPrice(displayedCandle.high)}</span>
+          </span>
+          <span className="text-gray-400">
+            L <span className="text-red-300">{formatPrice(displayedCandle.low)}</span>
+          </span>
+          <span className="text-gray-400">
+            C <span className="text-white">{formatPrice(displayedCandle.close)}</span>
+          </span>
+          <span className="text-gray-500">
+            V <span className="text-gray-300">{formatVolume(displayedCandle.volume)}</span>
+          </span>
+          <span className="text-gray-500">
+            {new Date(displayedCandle.timestamp).toLocaleString()}
+          </span>
+        </div>
+      )}
+
       <ReactECharts
         option={option}
         style={{ height: '600px', width: '100%' }}
         notMerge={true}
         lazyUpdate={true}
+        onAxisPointer={onChartHover}
+        onMouseOut={() => setHoverIndex(null)}
       />
       {realtimeCandles.length > 0 && (
         <div className="mt-2 text-xs text-gray-500">

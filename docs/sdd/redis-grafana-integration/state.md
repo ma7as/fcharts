@@ -75,20 +75,21 @@ Three chained PRs, stacked to main:
 | spec | done | 2026-07-24 | 2026-07-24 | `docs/sdd/redis-grafana-integration/spec.md` |
 | design | done | 2026-07-24 | 2026-07-24 | `docs/sdd/redis-grafana-integration/design.md` |
 | tasks | done | 2026-07-24 | 2026-07-24 | `docs/sdd/redis-grafana-integration/tasks.md` |
-| apply | pending — awaits user OK | — | — | `docs/sdd/redis-grafana-integration/apply-progress.md` |
-| verify | pending | — | — | `docs/sdd/redis-grafana-integration/verify-report.md` |
-| archive | pending | — | — | `docs/sdd/redis-grafana-integration/archive-report.md` |
+| apply | done | 2026-07-24 | 2026-07-24 | `docs/sdd/redis-grafana-integration/apply-progress.md` |
+| verify | done | 2026-07-24 | 2026-07-24 | `docs/sdd/redis-grafana-integration/verify-report.md` |
+| archive | done | 2026-07-24 | 2026-07-24 | `docs/sdd/redis-grafana-integration/archive-report.md` |
 
 ## Current phase
 
-- **current:** `tasks` (planning complete)
-- **next:** `apply` — only after user explicitly approves the plan and the
-  chained-PR strategy.
-- **next_recommended_action:** user reviews the four artifacts
-  (`explore.md`, `proposal.md`, `spec.md`, `design.md`, `tasks.md`) and
-  either approves `apply` for PR1 only, or asks for adjustments.
-- **planning_complete_at:** 2026-07-24
-- **planning_loc:** all artifacts are committable under `docs/sdd/redis-grafana-integration/`.
+- **current:** `archive` (change closed)
+- **status:** ARCHIVED
+- **verdict:** READY WITH FIXES (60 PASS / 2 WARNING / 4 SUGGESTION / 0 CRITICAL)
+- **runtime_validated:** yes — 7 containers up, 3/3 Prometheus targets up,
+  Grafana provisioned with datasource + 3 dashboards, `/internal/metrics`
+  returns Prometheus exposition.
+- **archived_at:** 2026-07-24
+- **post_mortem:** see `archive-report.md` for the 9 issues encountered and
+  the 7 follow-up PR suggestions.
 
 ## Detected project context
 

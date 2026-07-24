@@ -71,19 +71,35 @@ async function main() {
   // We store them with the .BA Yahoo suffix for identification.
   console.log(`✅ ${cedears.length} CEDEAR symbols (ARS)`);
 
-  // ─── Acciones Argentinas (MERVAL / Panel Líder BYMA) ────────────────────
+  // ─── Acciones Argentinas (MERVAL / Panel General BYMA vía Yahoo Finance) ──
   // type: "stock" | dataSource: "yahoo" (sufijo .BA) | currency: "ARS"
+  // Yahoo Finance expone los tickers BYMA con sufijo .BA; cubre Panel Líder
+  // y los papeles más líquidos del Panel General. Re-ejecutar `pnpm db:seed`
+  // para incorporar nuevos tickers (upsert los agrega sin duplicar).
   const arStocks = await Promise.all([
-    upsert('GGAL.BA',  'Grupo Financiero Galicia',       'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Financiero'),
-    upsert('YPF.BA',   'YPF S.A.',                       'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Energía'),
-    upsert('PAMP.BA',  'Pampa Energía S.A.',             'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Energía'),
-    upsert('TXAR.BA',  'Ternium Argentina S.A.',         'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Industriales'),
-    upsert('ALUA.BA',  'Aluar Aluminio Argentino',       'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Materiales'),
-    upsert('BBAR.BA',  'BBVA Argentina S.A.',            'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Financiero'),
-    upsert('COME.BA',  'Soc. Comercial del Plata S.A.',  'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Diversificado'),
-    upsert('CRES.BA',  'Cresud S.A.C.I.F. y A.',        'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Agropecuario'),
-    upsert('VALO.BA',  'Grupo Supervielle S.A.',         'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Financiero'),
-    upsert('MIRG.BA',  'Mirgor S.A.I.C.I.F.',           'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Tecnología'),
+    upsert('AGRO.BA', 'Adecoagro S.A.',                  'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Agropecuario'),
+    upsert('ALUA.BA', 'Aluar Aluminio Argentino S.A.',   'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Materiales'),
+    upsert('BBAR.BA', 'BBVA Argentina S.A.',             'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Financiero'),
+    upsert('BHIP.BA', 'Banco Hipotecario S.A.',          'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Financiero'),
+    upsert('BMA.BA',  'Banco Macro S.A.',                'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Financiero'),
+    upsert('CEPU.BA', 'Central Puerto S.A.',             'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Energía'),
+    upsert('COME.BA', 'Soc. Comercial del Plata',        'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Diversificado'),
+    upsert('CRES.BA', 'Cresud S.A.C.I.F. y A.',          'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Agropecuario'),
+    upsert('EDN.BA',  'Edenor S.A.',                     'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Servicios Públicos'),
+    upsert('GGAL.BA', 'Grupo Financiero Galicia',        'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Financiero'),
+    upsert('HARG.BA', 'Holcim (Argentina) S.A.',         'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Materiales'),
+    upsert('IRSA.BA', 'IRSA Propiedades Comerciales',    'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Inmobiliario'),
+    upsert('LOMA.BA', 'Loma Negra C.I.A.S.A.',           'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Industriales'),
+    upsert('MIRG.BA', 'Mirgor S.A.I.C.I.F.',             'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Tecnología'),
+    upsert('MOLI.BA', 'Molinos Río de la Plata',         'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Consumo'),
+    upsert('PAMP.BA', 'Pampa Energía S.A.',              'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Energía'),
+    upsert('TGN.BA',  'Transportadora de Gas del Norte', 'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Energía'),
+    upsert('TGS.BA',  'Transportadora de Gas del Sur',   'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Energía'),
+    upsert('TRAN.BA', 'Transener S.A.',                  'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Energía'),
+    upsert('TXAR.BA', 'Ternium Argentina S.A.',          'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Industriales'),
+    upsert('VALO.BA', 'Grupo Supervielle S.A.',          'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Financiero'),
+    upsert('VIST.BA', 'Vista Energy Argentina S.A.',     'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Energía'),
+    upsert('YPF.BA',  'YPF S.A.',                        'BYMA', SymbolType.stock, Currency.ARS, Market.BYMA, DataSource.yahoo, 'Energía'),
   ]);
   console.log(`✅ ${arStocks.length} Argentine stock symbols (ARS)`);
 

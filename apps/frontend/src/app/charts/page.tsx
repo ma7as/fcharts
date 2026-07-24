@@ -1,7 +1,7 @@
 'use client';
 
 import { CandlestickChart } from '@/components/CandlestickChart';
-import { SymbolSelector } from '@/components/SymbolSelector';
+import { SymbolSidebar } from '@/components/SymbolSidebar';
 import { IntervalSelector } from '@/components/IntervalSelector';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { useState } from 'react';
@@ -76,13 +76,16 @@ export default function ChartsPage() {
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          <div className="bg-gray-900 rounded-lg shadow-lg p-6 border border-gray-800">
-            <div className="flex gap-4 mb-6">
-              <SymbolSelector value={symbol} onChange={setSymbol} />
-              <IntervalSelector value={interval} onChange={setInterval} />
-            </div>
+          <div className="flex gap-4">
+            <SymbolSidebar value={symbol} onChange={setSymbol} />
 
-            <CandlestickChart symbol={symbol} interval={interval} />
+            <div className="flex-1 bg-gray-900 rounded-lg shadow-lg p-6 border border-gray-800 min-w-0">
+              <div className="flex gap-4 mb-6">
+                <IntervalSelector value={interval} onChange={setInterval} />
+              </div>
+
+              <CandlestickChart symbol={symbol} interval={interval} />
+            </div>
           </div>
         </div>
       </main>

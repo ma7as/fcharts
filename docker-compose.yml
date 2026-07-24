@@ -1,9 +1,7 @@
-version: '3.9'
-
 services:
   # PostgreSQL Database
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     container_name: fc-postgres
     restart: unless-stopped
     environment:
@@ -23,7 +21,7 @@ services:
 
   # Redis (opcional, para cache)
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     container_name: fc-redis
     restart: unless-stopped
     ports:

@@ -3,6 +3,7 @@ import { OhlcQueryDto } from './dto/ohlc-query.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { MarketDataRegistry } from './providers/market-data-registry.service';
 import { CandleData } from './providers/candle-data.type';
+import { CacheService } from '../common/cache/cache.service';
 
 @Injectable()
 export class MarketService {
@@ -11,9 +12,22 @@ export class MarketService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly registry: MarketDataRegistry,
+    private readonly cache: CacheService,
   ) {}
 
   async getOhlcData(query: OhlcQueryDto) {
+    // 0. Compute cache key and short-circuit on hit (AC-9, AC-10, AC-11, AC-15).
+    const cacheKey = this.cache.buildOhlcKey({
+      symbol: query.symbol,
+      interval: query.interval ?? '1d',
+      limit: query.limit ?? 200,
+      startTime: query.startTime,
+    });
+    const cachedResp = await this.cache.getOhlc(cacheKey);
+    if (cachedResp !== null) {
+      return cachedResp;
+    }
+
     try {
       // 1. Resolve symbol metadata from DB
       const symbolRecord = await this.prisma.symbol.findUnique({
@@ -40,7 +54,9 @@ export class MarketService {
         });
 
         if (cached.length >= Math.floor((query.limit ?? 200) * 0.9)) {
-          return this.buildResponse(query, symbolRecord, cached.map(this.dbToCandle));
+          const response = this.buildResponse(query, symbolRecord, cached.map(this.dbToCandle));
+          await this.cache.setOhlc(cacheKey, response);
+          return response;
         }
       }
 
@@ -72,7 +88,15 @@ export class MarketService {
         });
       }
 
-      return this.buildResponse(query, symbolRecord, candles);
+      const response = this.buildResponse(query, symbolRecord, candles);
+
+      // 5. Populate Redis front-layer cache. Skip empty responses —
+      // caching an empty result just amplifies upstream outages.
+      if (candles.length > 0) {
+        await this.cache.setOhlc(cacheKey, response);
+      }
+
+      return response;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Error fetching market data: ${message}`);

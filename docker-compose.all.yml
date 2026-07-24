@@ -1,9 +1,7 @@
-version: '3.9'
-
 services:
   # PostgreSQL Database
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     container_name: fc-postgres
     restart: unless-stopped
     environment:
@@ -21,23 +19,22 @@ services:
       timeout: 5s
       retries: 5
 
-  # Redis (currently unused — the backend does not wire CacheModule.
-  # The DB-level candle cache is sufficient for the current load. Uncomment
-  # this block + reintroduce cache-manager deps if/when a real caching layer
-  # is needed.)
-  # redis:
-  #   image: redis:7-alpine
-  #   container_name: fc-redis
-  #   restart: unless-stopped
-  #   ports:
-  #     - '8103:6379'
-  #   volumes:
-  #     - redis_data:/data
-  #   healthcheck:
-  #     test: ['CMD', 'redis-cli', 'ping']
-  #     interval: 10s
-  #     timeout: 3s
-  #     retries: 5
+  # Redis — backing store for backend cache (PR2) + Throttler storage (PR2).
+  # AOF persistence enabled to mitigate R1 (Redis SPOF).
+  redis:
+    image: redis:8-alpine
+    container_name: fc-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - '8103:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
   # Backend - NestJS
   backend:
@@ -49,10 +46,15 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       NODE_ENV: development
       PORT: 8101
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/financial_charts
+      REDIS_URL: redis://redis:6379
+      REDIS_REQUIRED: ${REDIS_REQUIRED:-false}
+      REDIS_KEY_PREFIX: ${REDIS_KEY_PREFIX:-fc:}
       # Load JWT_SECRET from the host .env (required: ≥32 chars).
       # If unset, the backend will refuse to start — see auth.module.ts.
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env. Generate with openssl rand -hex 32}
@@ -88,11 +90,80 @@ services:
       - ./apps/frontend/src:/app/apps/frontend/src
       - ./apps/frontend/public:/app/apps/frontend/public
 
+  # Prometheus — scrapes the backend /metrics endpoint + redis-exporter + self.
+  fc-prometheus:
+    image: prom/prometheus:v2.55.0
+    container_name: fc-prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+    volumes:
+      - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      # In .all.yml we bind to localhost only — production posture is to
+      # reverse-proxy or scrape from inside the network. Dev users use
+      # `docker-compose.observability.yml` to publish on all interfaces.
+      - "127.0.0.1:9090:9090"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9090/-/healthy || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      - backend
+
+  # redis-exporter — Prometheus metrics for the Redis cache layer.
+  fc-redis-exporter:
+    image: oliver006/redis_exporter:v1.62.0
+    container_name: fc-redis-exporter
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: redis://fc-redis:6379
+    ports:
+      - "127.0.0.1:9110:9121"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # Grafana — auto-provisions Prometheus datasource + 3 dashboards from
+  # the repo-mounted ops/ folder.
+  fc-grafana:
+    image: grafana/grafana:11.3.0
+    container_name: fc-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD must be set in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_INSTALL_PLUGINS: ""
+    volumes:
+      - ./ops/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./ops/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:8300:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      fc-prometheus:
+        condition: service_healthy
+
 volumes:
   postgres_data:
     driver: local
-  # redis_data:
-  #   driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
 
 networks:
   default:

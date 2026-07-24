@@ -11,6 +11,8 @@ import { Logger, UnauthorizedException, OnModuleDestroy } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { MarketDataRegistry } from './providers/market-data-registry.service';
+import { CacheService } from '../common/cache/cache.service';
+import { MetricsServiceStub } from '../common/metrics/metrics.stub';
 import { ACCESS_TOKEN_COOKIE } from '../auth/constants';
 
 interface JwtPayload {
@@ -53,6 +55,8 @@ export class MarketGateway
     private readonly prisma: PrismaService,
     private readonly registry: MarketDataRegistry,
     private readonly jwtService: JwtService,
+    private readonly cache: CacheService,
+    private readonly metrics: MetricsServiceStub,
   ) {}
 
   /**
@@ -85,6 +89,7 @@ export class MarketGateway
       data.username = payload.username;
 
       this.logger.log(`Client connected: ${client.id} (user ${payload.sub})`);
+      this.metrics.wsConnect('market');
     } catch (err) {
       const reason =
         err instanceof Error ? err.message : 'Invalid authentication token';
@@ -96,6 +101,7 @@ export class MarketGateway
 
   handleDisconnect(client: Socket) {
     this.logger.log(`Client disconnected: ${client.id}`);
+    this.metrics.wsDisconnect('market');
     this.cleanup(client.id);
   }
 
@@ -118,8 +124,20 @@ export class MarketGateway
       `Subscribing ${client.id} \u2192 ${symbol}/${interval} via ${dataSource}`,
     );
 
+    // PR2 task 2.6: read last-known-price (TTL 2s) and emit it as the
+    // first frame so a reconnecting client sees a non-stale price
+    // immediately, before the next WS tick lands.
+    const lastPrice = await this.cache.getLastPrice(symbol);
+    if (lastPrice !== null) {
+      client.emit('last_known_price', { symbol, price: lastPrice, ts: Date.now() });
+    }
+
     const unsubscribe = provider.streamCandles(symbol, interval, (candle) => {
       client.emit('candle', candle);
+      // PR2 task 2.6: cache the last close so a reconnecting client
+      // gets a non-stale first frame within 2s. fire-and-forget — the
+      // cache layer swallows its own errors.
+      void this.cache.setLastPrice(symbol, candle.close);
     });
 
     this.subs.set(client.id, unsubscribe);

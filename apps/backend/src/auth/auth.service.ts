@@ -8,6 +8,7 @@ import {
   generateRefreshToken,
   hashRefreshToken,
 } from './auth-cookie.util';
+import { MetricsServiceStub } from '../common/metrics/metrics.stub';
 import * as bcrypt from 'bcryptjs';
 
 const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -25,6 +26,7 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
     private prisma: PrismaService,
+    private metrics: MetricsServiceStub,
   ) {}
 
   async validateUser(username: string, password: string) {
@@ -88,6 +90,7 @@ export class AuthService {
         this.logger.warn(
           `Refresh token reuse detected for family ${oldRow.family} \u2014 revoking`,
         );
+        this.metrics.authEvent('refresh_revoke');
         await this.prisma.refreshToken.updateMany({
           where: { family: oldRow.family, revokedAt: null },
           data: { revokedAt: new Date() },
@@ -113,6 +116,7 @@ export class AuthService {
           expiresAt,
         },
       });
+      this.metrics.authEvent('refresh_rotate');
     } else {
       // Initial login: start a new family.
       const family = generateRefreshToken();
@@ -134,6 +138,7 @@ export class AuthService {
 
     if (!user || !(await bcrypt.compare(loginDto.password, user.password))) {
       // Generic message — no user enumeration via timing or wording.
+      this.metrics.authEvent('login_fail');
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -141,11 +146,13 @@ export class AuthService {
       throw new UnauthorizedException('User account is disabled');
     }
 
+    this.metrics.authEvent('login_success');
     return this.issueTokenPair(user.id);
   }
 
   async register(registerDto: RegisterDto) {
     const user = await this.usersService.create(registerDto);
+    this.metrics.authEvent('register_success');
     const tokens = await this.issueTokenPair(user.id);
     return { ...tokens, user };
   }

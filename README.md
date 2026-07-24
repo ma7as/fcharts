@@ -246,6 +246,39 @@ fcharts/
 └── package.json
 ```
 
+## Redis (PR1)
+
+The NestJS backend wires a Redis 8 client via `RedisModule` for future
+caching and Throttler storage (PR2). Connection is configured by
+`REDIS_URL` (default `redis://localhost:8103`); set `REDIS_REQUIRED=true`
+to fail-fast on startup when Redis is unreachable.
+
+## Observability (PR3)
+
+The backend exposes Prometheus metrics at `GET /internal/metrics` on the
+main API port (8101). A Prometheus + Grafana stack is included in
+`docker-compose.all.yml`:
+
+- Prometheus scrapes the backend, `redis-exporter`, and itself every 15s
+  (15d retention).
+- Grafana auto-provisions the Prometheus datasource and three dashboards
+  (`fcharts-overview`, `fcharts-cache`, `fcharts-auth`) from
+  `ops/grafana/`.
+
+For local development, use the overlay to publish the UIs to your host:
+
+```bash
+docker compose -f docker-compose.all.yml -f docker-compose.observability.yml up -d
+```
+
+Then open:
+
+- Grafana: http://localhost:8300 (admin / `${GRAFANA_ADMIN_PASSWORD}`)
+- Prometheus: http://localhost:9090
+
+Dashboard sources live under `ops/grafana/dashboards/`. Editing JSON and
+committing will reflect in Grafana within 30s — no container restart.
+
 ## 🔌 API Endpoints
 
 ### Authentication

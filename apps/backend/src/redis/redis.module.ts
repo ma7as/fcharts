@@ -8,11 +8,11 @@ import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import { REDIS_CLIENT, RedisService } from './redis.service';
 import { RedisPingCron } from './redis-ping.cron';
-import { MetricsStubModule } from '../common/metrics/metrics.stub.module';
+import { MetricsModule } from '../common/metrics/metrics.module';
 
 @Global()
 @Module({
-  imports: [MetricsStubModule],
+  imports: [MetricsModule],
   providers: [
     RedisService,
     RedisPingCron,

@@ -12,7 +12,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { MarketDataRegistry } from './providers/market-data-registry.service';
 import { CacheService } from '../common/cache/cache.service';
-import { MetricsServiceStub } from '../common/metrics/metrics.stub';
+import { MetricsService } from '../common/metrics/metrics.service';
 import { ACCESS_TOKEN_COOKIE } from '../auth/constants';
 
 interface JwtPayload {
@@ -56,7 +56,7 @@ export class MarketGateway
     private readonly registry: MarketDataRegistry,
     private readonly jwtService: JwtService,
     private readonly cache: CacheService,
-    private readonly metrics: MetricsServiceStub,
+    private readonly metrics: MetricsService,
   ) {}
 
   /**

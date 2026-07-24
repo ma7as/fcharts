@@ -204,14 +204,14 @@ When Redis is down and `REDIS_REQUIRED=true`, the throttler MUST surface a 500 r
 
 `PrometheusModule.register({ defaultMetrics: { enabled: true }, path: '/metrics' })` MUST be imported in `app.module.ts` exactly once.
 
-#### AC-29 [observability] `/metrics` is served on internal port 9464 (not published to host)
+#### AC-29 [observability] `/internal/metrics` is served on the main app at port 8101 (excluded from Swagger and from JwtAuthGuard)
 
-The backend MUST expose `/metrics` on port `9464` (internal only). The `docker-compose.all.yml` MUST NOT publish `9464` to the host.
+The backend MUST expose `/internal/metrics` on the main Nest app at port `8101`. The path MUST be excluded from Swagger (`@ApiExcludeController()`) and MUST NOT be behind `JwtAuthGuard`. A separate internal port (9464) is deferred to v2 (see `design.md §9` and the drift log below).
 
 **Scenario: metrics endpoint reachable inside the backend container**
 
 - **GIVEN** the backend container is running on the `fc-network`
-- **WHEN** `curl http://backend:9464/metrics` is issued from another container on the same network
+- **WHEN** `curl http://backend:8101/internal/metrics` is issued from another container on the same network
 - **THEN** the response is `text/plain; version=0.0.4` and lists Prometheus metrics
 
 #### AC-30 [observability] Default Node.js process metrics are exposed
@@ -336,10 +336,10 @@ In `.all.yml`, Prometheus MUST NOT be reachable from outside the loopback. Eithe
 
 A new file `ops/prometheus/prometheus.yml` MUST define the `global`, `scrape_configs`, and `evaluation_interval` sections.
 
-#### AC-49 [ops] Targets: backend (`9464`), redis-exporter (`9121`), self
+#### AC-49 [ops] Targets: `fc-backend:8101` (metrics_path: `/internal/metrics`), redis-exporter (`9121`), self
 
 `prometheus.yml` MUST scrape:
-- `backend:9464` — labeled `job="backend"`.
+- `fc-backend:8101` with `metrics_path: /internal/metrics` — labeled `job="backend"`.
 - `redis-exporter:9121` — labeled `job="redis-exporter"`.
 - `localhost:9090` — labeled `job="prometheus"` (self).
 
@@ -484,3 +484,9 @@ In `.all.yml`, the exporter MUST either omit `ports:` or bind to `127.0.0.1:9110
 | **PR1** (infra) | AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8, AC-64, AC-65 |
 | **PR2** (cache) | AC-9, AC-10, AC-11, AC-12, AC-13, AC-14, AC-15, AC-16, AC-17, AC-18, AC-19, AC-20, AC-21, AC-22, AC-23, AC-24, AC-25, AC-26, AC-27 |
 | **PR3** (observability) | AC-28, AC-29, AC-30, AC-31, AC-32, AC-33, AC-34, AC-35, AC-36, AC-37, AC-38, AC-39, AC-40, AC-41, AC-42, AC-43, AC-44, AC-45, AC-46, AC-47, AC-48, AC-49, AC-50, AC-51, AC-52, AC-53, AC-54, AC-55, AC-56, AC-57, AC-58, AC-59, AC-60, AC-61, AC-62, AC-63, AC-66 |
+## Drift log
+
+| Date | AC | Original | Current | Reason |
+|---|---|---|---|---|
+| 2026-07-24 | AC-29 | /metrics on internal port 9464 | /internal/metrics on main app at port 8101 | Design §9 chose to mount on the main app for simplicity; a separate internal port "deferred to v2". Implementation matches design. |
+| 2026-07-24 | AC-49 | backend target :9464 | c-backend:8101/internal/metrics | Linked to AC-29 drift. |

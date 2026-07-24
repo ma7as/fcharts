@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { ThrottlerException } from '@nestjs/throttler';
-import { MetricsServiceStub } from './metrics.stub';
+import { MetricsService } from './metrics.service';
 
 /**
  * Global filter: on a ThrottlerException (429), increment
@@ -15,7 +15,7 @@ import { MetricsServiceStub } from './metrics.stub';
  */
 @Catch(ThrottlerException)
 export class ThrottlerMetricsFilter implements ExceptionFilter {
-  constructor(private readonly metrics: MetricsServiceStub) {}
+  constructor(private readonly metrics: MetricsService) {}
 
   catch(exception: HttpException, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();

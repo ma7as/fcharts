@@ -76,6 +76,39 @@ export class RedisService implements OnModuleDestroy {
   }
 
   /**
+   * Scan keys matching the given pattern. Returns the full key list
+   * (including the configured prefix). For large keyspaces, prefer
+   * the streaming version (not implemented; not needed for our
+   * namespaces).
+   */
+  async scan(pattern: string): Promise<string[]> {
+    try {
+      const result = await this.client.keys(`${this.prefix}${pattern}`);
+      return result;
+    } catch (err) {
+      this.logger.warn(
+        `Redis scan('${pattern}') failed: ${this.errMsg(err)}`,
+      );
+      return [];
+    }
+  }
+
+  /**
+   * Delete multiple keys in one round-trip. Best-effort: errors are
+   * logged and swallowed.
+   */
+  async delMany(keys: string[]): Promise<void> {
+    if (keys.length === 0) return;
+    try {
+      await this.client.del(...keys);
+    } catch (err) {
+      this.logger.warn(
+        `Redis delMany(${keys.length} keys) failed: ${this.errMsg(err)}`,
+      );
+    }
+  }
+
+  /**
    * Cache-aside read. On miss, runs the loader, stores the result with
    * the given TTL (plus optional ±10% jitter), and returns it.
    */

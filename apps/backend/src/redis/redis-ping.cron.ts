@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import type Redis from 'ioredis';
 import { REDIS_CLIENT } from './redis.service';
-import { MetricsServiceStub } from '../common/metrics/metrics.stub';
+import { MetricsService } from '../common/metrics/metrics.service';
 
 @Injectable()
 export class RedisPingCron {
@@ -10,7 +10,7 @@ export class RedisPingCron {
 
   constructor(
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
-    private readonly metrics: MetricsServiceStub,
+    private readonly metrics: MetricsService,
   ) {}
 
   @Cron(CronExpression.EVERY_30_SECONDS)

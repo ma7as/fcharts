@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RedisService } from '../../redis/redis.service';
-import { MetricsServiceStub } from '../metrics/metrics.stub';
+import { MetricsService } from '../metrics/metrics.service';
 import { CandleData } from '../../market/providers/candle-data.type';
 
 export type OhlcCacheResponse = {
@@ -28,8 +28,8 @@ export type PaginatedResultLike<T> = {
  * namespace (ohlc, symbols, px) so callers don't need to know the
  * key shape or TTL — that's the service's job.
  *
- * All read paths record hit/miss via MetricsServiceStub (no-op in PR2,
- * real counters in PR3). All writes are silent on success.
+ * All read paths record hit/miss via MetricsService. All writes are silent
+ * on success.
  */
 @Injectable()
 export class CacheService {
@@ -44,7 +44,7 @@ export class CacheService {
 
   constructor(
     private readonly redis: RedisService,
-    private readonly metrics: MetricsServiceStub,
+    private readonly metrics: MetricsService,
   ) {}
 
   // ── OHLC ────────────────────────────────────────────────────────
@@ -134,5 +134,30 @@ export class CacheService {
    */
   jitterTtl(ttlSec: number): number {
     return Math.max(1, Math.floor(ttlSec * (0.9 + Math.random() * 0.2)));
+  }
+
+  /**
+   * Invalidate every cached symbols catalog page. Best-effort: if Redis
+   * is down, the call swallows the error and returns 0.
+   *
+   * Used by the admin endpoint when a new symbol is added so the catalog
+   * reflects the change immediately instead of waiting for the 5-min TTL.
+   */
+  async invalidateAllSymbols(): Promise<number> {
+    try {
+      // We use the underlying client (via RedisService) to enumerate keys.
+      // The `KEYS` command is OK for low-cardinality namespaces like ours
+      // (≤ a few hundred paginated queries at any time). For higher
+      // cardinality, switch to `SCAN`.
+      const keys = await this.redis.scan('cache:symbols:*');
+      if (keys.length === 0) return 0;
+      await this.redis.delMany(keys);
+      return keys.length;
+    } catch (err) {
+      this.logger.warn(
+        `invalidateAllSymbols failed: ${err instanceof Error ? err.message : 'unknown'}`,
+      );
+      return 0;
+    }
   }
 }

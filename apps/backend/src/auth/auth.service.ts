@@ -8,7 +8,7 @@ import {
   generateRefreshToken,
   hashRefreshToken,
 } from './auth-cookie.util';
-import { MetricsServiceStub } from '../common/metrics/metrics.stub';
+import { MetricsService } from '../common/metrics/metrics.service';
 import * as bcrypt from 'bcryptjs';
 
 const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -26,7 +26,7 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
     private prisma: PrismaService,
-    private metrics: MetricsServiceStub,
+    private metrics: MetricsService,
   ) {}
 
   async validateUser(username: string, password: string) {

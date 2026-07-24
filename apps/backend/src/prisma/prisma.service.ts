@@ -1,12 +1,12 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
-import { MetricsServiceStub } from '../common/metrics/metrics.stub';
+import { MetricsService } from '../common/metrics/metrics.service';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PrismaService.name);
 
-  constructor(private readonly metrics: MetricsServiceStub) {
+  constructor(private readonly metrics: MetricsService) {
     super();
   }
 

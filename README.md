@@ -264,12 +264,18 @@ main API port (8101). A Prometheus + Grafana stack is included in
 - Grafana auto-provisions the Prometheus datasource and three dashboards
   (`fcharts-overview`, `fcharts-cache`, `fcharts-auth`) from
   `ops/grafana/`.
+- Alert rules live in `ops/prometheus/alerts.yml` and are mounted into
+  Prometheus at `/etc/prometheus/alerts.yml`. The file is loaded by
+  `prometheus.yml` via `rule_files:`; alerts surface in the Prometheus
+  UI (`http://localhost:9090/alerts`) without alertmanager for now
+  (PR-FU-006 scope; alertmanager is a follow-up).
 
-For local development, use the overlay to publish the UIs to your host:
-
-```bash
-docker compose -f docker-compose.all.yml -f docker-compose.observability.yml up -d
-```
+The observability containers (`fc-prometheus`, `fc-grafana`,
+`fc-redis-exporter`) publish their ports on **all interfaces** by
+default — Prometheus on `9090`, Grafana on `8300`, redis-exporter on
+`9110`. **Production lockdown is via reverse proxy / Docker socket
+options, not via port binding.** See `docs/follow-ups/prs.md` PR-FU-003
+for the context behind this decision.
 
 Then open:
 

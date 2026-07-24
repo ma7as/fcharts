@@ -10,14 +10,12 @@ import type { Counter, Gauge, Histogram } from 'prom-client';
 export type CacheNamespace = 'ohlc' | 'symbols' | 'px';
 
 /**
- * Backend metrics service. The class is named `MetricsServiceStub` to
- * preserve the symbol that PR2's `CacheService` already imports; PR4
- * (cleanup) renames it to `MetricsService`. Body now wires real
- * Prometheus counters/gauges/histograms via `@willsoto/nestjs-prometheus`
- * and exposes typed helpers for the rest of the codebase.
+ * Backend metrics service. Wires real Prometheus counters/gauges/histograms
+ * via `@willsoto/nestjs-prometheus` and exposes typed helpers for the rest
+ * of the codebase.
  */
 @Injectable()
-export class MetricsServiceStub {
+export class MetricsService {
   constructor(
     @InjectMetric('cache_hits_total') private readonly cacheHits: Counter<string>,
     @InjectMetric('cache_misses_total') private readonly cacheMisses: Counter<string>,

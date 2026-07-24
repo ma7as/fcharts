@@ -11,10 +11,11 @@ import { SymbolsModule } from './symbols/symbols.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
 import { CacheModule } from './common/cache/cache.module';
-import { MetricsStubModule } from './common/metrics/metrics.stub.module';
+import { MetricsModule } from './common/metrics/metrics.module';
 import { REDIS_CLIENT } from './redis/redis.service';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { AdminModule } from './admin/admin.module';
 import { PortfoliosModule } from './portfolios/portfolios.module';
 
 @Module({
@@ -48,10 +49,11 @@ import { PortfoliosModule } from './portfolios/portfolios.module';
     PrismaModule,
     RedisModule,
     CacheModule,
-    MetricsStubModule,
+    MetricsModule,
     ScheduleModule.forRoot(),
     UsersModule,
     AuthModule,
+    AdminModule,
     PortfoliosModule,
     MarketModule,
     SymbolsModule,

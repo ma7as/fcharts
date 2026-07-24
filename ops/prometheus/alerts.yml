@@ -1,0 +1,43 @@
+groups:
+  - name: fcharts-baseline
+    interval: 30s
+    rules:
+      # High login-fail rate → possible credential-stuffing attack.
+      - alert: HighLoginFailureRate
+        expr: sum(rate(auth_events_total{event="login_fail"}[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Login failures above 1/s for 5 minutes"
+          description: "Possible credential-stuffing attack. Investigate /api/v1/auth/login source IPs."
+
+      # Redis is slow or sick.
+      - alert: RedisPingLatencyHigh
+        expr: redis_ping_latency_seconds > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis PING latency > 100ms for 2 minutes"
+          description: "Redis may be saturating. Check memory, connections, and CPU."
+
+      # 5xx rate spike.
+      - alert: Backend5xxRateHigh
+        expr: sum(rate(http_requests_total{status_code=~"5.."}[5m])) > 1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "5xx error rate above 1/s for 5 minutes"
+          description: "Backend is in a broken state. Investigate logs and recent deploys."
+
+      # Excessive throttler blocks.
+      - alert: ThrottlerBlocksHigh
+        expr: sum(rate(throttler_blocked_total[10m])) > 0.5
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "Throttler blocking more than 0.5 req/s globally for 10 minutes"
+          description: "A client may be misbehaving or we have a runaway loop."

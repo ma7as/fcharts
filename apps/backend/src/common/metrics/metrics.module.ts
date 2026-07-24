@@ -2,7 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 import { MetricsController } from './metrics.controller';
-import { MetricsServiceStub, metricsProviders } from './metrics.stub';
+import { MetricsService, metricsProviders } from './metrics.service';
 import { ThrottlerMetricsFilter } from './throttler-metrics.filter';
 
 @Global()
@@ -15,7 +15,7 @@ import { ThrottlerMetricsFilter } from './throttler-metrics.filter';
   ],
   controllers: [MetricsController],
   providers: [
-    MetricsServiceStub,
+    MetricsService,
     ThrottlerMetricsFilter,
     ...metricsProviders,
     {
@@ -23,6 +23,6 @@ import { ThrottlerMetricsFilter } from './throttler-metrics.filter';
       useClass: ThrottlerMetricsFilter,
     },
   ],
-  exports: [MetricsServiceStub],
+  exports: [MetricsService],
 })
-export class MetricsStubModule {}
+export class MetricsModule {}

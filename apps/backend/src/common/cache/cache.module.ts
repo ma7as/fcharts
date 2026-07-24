@@ -1,6 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import { CacheService } from './cache.service';
-import { MetricsStubModule } from '../metrics/metrics.stub.module';
+import { MetricsModule } from '../metrics/metrics.module';
 
 /**
  * Global so MarketService, SymbolsService, MarketGateway and any future
@@ -9,7 +9,7 @@ import { MetricsStubModule } from '../metrics/metrics.stub.module';
  */
 @Global()
 @Module({
-  imports: [MetricsStubModule],
+  imports: [MetricsModule],
   providers: [CacheService],
   exports: [CacheService],
 })
